@@ -1,0 +1,15 @@
+{
+  "version": "2.2.1",
+  "show_once": true,
+  "changes": [
+    "IMPROVED: Back gesture shows screen preview",
+    "IMPROVED: Voucher type list preserved on back",
+    "IMPROVED: Smooth slide animations on navigation",
+    "FIXED: Build warnings removed for clean build",
+    "FIXED: Deprecated APIs replaced with stable ones",
+    "FIXED: Unused imports and variables cleaned up",
+    "FIXED: Predictive back gesture support added",
+    "FIXED: Navigation back stack behaves correctly",
+    "PERFORMANCE: Cleaner build output, zero warnings"
+  ]
+}
