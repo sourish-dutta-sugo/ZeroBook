@@ -70,6 +70,9 @@ import com.example.data.EmailReminderScheduler
 import com.example.services.InvoiceGenerator
 import com.example.services.configureInvoiceWebView
 import com.example.ui.AppViewModel
+import com.example.ui.animation.premiumClickable
+import com.example.ui.animation.premiumFabEntrance
+import com.example.ui.animation.pressScale
 import com.example.ui.theme.AppColors
 import com.example.ui.theme.Colors
 import com.example.ui.theme.zeroBookInputColors
@@ -373,7 +376,10 @@ fun VouchersScreen(
                             onClick = { navigateToNewVoucher(null) },
                             containerColor = AppColors.primary,
                             contentColor = AppColors.textOnPrimary,
-                            modifier = Modifier.testTag("add_voucher_fab")
+                            modifier = Modifier
+                                .premiumFabEntrance()
+                                .pressScale()
+                                .testTag("add_voucher_fab")
                         ) {
                             Icon(imageVector = Icons.Default.Add, contentDescription = "Add Voucher")
                         }
@@ -442,7 +448,7 @@ fun VouchersScreen(
                                                 if (isSelected) AppColors.primary else AppColors.border,
                                                 RoundedCornerShape(16.dp)
                                             )
-                                            .clickable { selectedVoucherId = voucher.id },
+                                            .premiumClickable { selectedVoucherId = voucher.id },
                                         colors = CardDefaults.cardColors(
                                             containerColor = if (isSelected) AppColors.primary.copy(alpha = 0.08f) else AppColors.cardBg
                                         )
@@ -541,7 +547,10 @@ fun VouchersScreen(
                     onClick = { navigateToNewVoucher(null) },
                     containerColor = AppColors.primary,
                     contentColor = AppColors.textOnPrimary,
-                    modifier = Modifier.testTag("add_voucher_fab")
+                    modifier = Modifier
+                        .premiumFabEntrance()
+                        .pressScale()
+                        .testTag("add_voucher_fab")
                 ) {
                     Icon(imageVector = Icons.Default.Add, contentDescription = "Add Voucher")
                 }
@@ -4724,6 +4733,7 @@ fun StickyBottomBar(
                             onClick = { onSaveClick(false) },
                             modifier = Modifier
                                 .height(44.dp)
+                                .pressScale()
                                 .testTag("save_and_exit_button"),
                             shape = RoundedCornerShape(8.dp),
                             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF64748B)),
@@ -4738,6 +4748,7 @@ fun StickyBottomBar(
                             onClick = { onSaveClick(true) },
                             modifier = Modifier
                                 .height(44.dp)
+                                .pressScale()
                                 .testTag("save_and_print_button"),
                             shape = RoundedCornerShape(8.dp),
                             colors = ButtonDefaults.buttonColors(containerColor = AppColors.primary),
@@ -4753,6 +4764,7 @@ fun StickyBottomBar(
                         onClick = { onSaveClick(false) },
                         modifier = Modifier
                             .height(44.dp)
+                            .pressScale()
                             .testTag("save_voucher_button"),
                         shape = RoundedCornerShape(8.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = AppColors.primary),

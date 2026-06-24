@@ -41,6 +41,8 @@ import com.example.ui.theme.*
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardType
 import kotlinx.coroutines.launch
+import com.example.ui.animation.pressScale
+import com.example.ui.animation.premiumClickable
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -199,7 +201,7 @@ fun ReportsScreen(
                                         if (isSelected) AppColors.primary else AppColors.border,
                                         RoundedCornerShape(12.dp)
                                     )
-                                    .clickable { activeReport = type },
+                                    .premiumClickable { activeReport = type },
                                 colors = CardDefaults.cardColors(
                                     containerColor = if (isSelected) AppColors.primary.copy(alpha = 0.08f) else AppColors.cardBg
                                 )
@@ -1710,7 +1712,7 @@ fun ReportMenuCard(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onClick() },
+            .premiumClickable { onClick() },
         colors = CardDefaults.cardColors(containerColor = AppColors.cardBg),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
@@ -1882,7 +1884,9 @@ fun AgedBillsListView(
                                 shape = RoundedCornerShape(6.dp),
                                 colors = ButtonDefaults.buttonColors(containerColor = AppColors.primary),
                                 contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
-                                modifier = Modifier.height(34.dp)
+                                modifier = Modifier
+                                    .height(34.dp)
+                                    .pressScale()
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.Check,
@@ -1949,11 +1953,14 @@ fun AgedBillsListView(
                                     contentColor = if (isSel) Color.White else AppColors.textSecondary
                                 ),
                                 shape = RoundedCornerShape(6.dp),
-                                modifier = Modifier.weight(1f).border(
-                                    1.dp,
-                                    if (isSel) AppColors.primary else AppColors.border,
-                                    RoundedCornerShape(6.dp)
-                                )
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .border(
+                                        1.dp,
+                                        if (isSel) AppColors.primary else AppColors.border,
+                                        RoundedCornerShape(6.dp)
+                                    )
+                                    .pressScale()
                             ) {
                                 Text(mode, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                             }
@@ -1974,7 +1981,8 @@ fun AgedBillsListView(
                                 receiptDate += 24L * 3600L * 1000L
                             },
                             shape = RoundedCornerShape(4.dp),
-                            contentPadding = PaddingValues(horizontal = 8.dp)
+                            contentPadding = PaddingValues(horizontal = 8.dp),
+                            modifier = Modifier.pressScale()
                         ) {
                             Text("+1 Day", fontSize = 11.sp)
                         }
@@ -2031,6 +2039,8 @@ fun AgedBillsListView(
                             }
                         }
                     }
+                    ,
+                    modifier = Modifier.pressScale()
                 ) {
                     Text("Capture Payment")
                 }

@@ -2,6 +2,15 @@
   "show_once": true,
   "history": [
     {
+      "version": "1.0.0-rc1",
+      "changes": [
+        "PRE-RELEASE: Introduced a unified premium motion system for screen transitions, tap feedback, FABs, and key interactive surfaces ahead of v1.0.",
+        "FIXED: Back button and back gesture now follow the real in-app screen history one step at a time instead of collapsing nested settings flows back to Dashboard.",
+        "IMPROVED: Root tab switching now preserves expected navigation state while still allowing intentional flow resets where designed.",
+        "POLISH: Refined press feedback across cards, action buttons, and primary controls for a smoother, more consistent premium feel."
+      ]
+    },
+    {
       "version": "2.2.2",
       "changes": [
         "ADDED: Setup now blocks save only when Business Name, Address, or PIN Code is empty, with red field errors and automatic focus on the first missing field.",

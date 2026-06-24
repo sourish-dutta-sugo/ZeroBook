@@ -38,6 +38,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.*
 import com.example.ui.AppViewModel
+import com.example.ui.animation.premiumClickable
+import com.example.ui.animation.premiumFabEntrance
+import com.example.ui.animation.pressScale
 import com.example.ui.theme.*
 import kotlinx.coroutines.delay
 import java.util.UUID
@@ -99,7 +102,10 @@ fun PartiesScreen(
                             onClick = { showAddPartyForm = true },
                             containerColor = AppColors.primary,
                             contentColor = AppColors.textOnPrimary,
-                            modifier = Modifier.testTag("add_party_fab")
+                            modifier = Modifier
+                                .premiumFabEntrance()
+                                .pressScale()
+                                .testTag("add_party_fab")
                         ) {
                             Icon(imageVector = Icons.Default.Add, contentDescription = "Add Party")
                         }
@@ -179,7 +185,10 @@ fun PartiesScreen(
                                                 if (isSelected) AppColors.primary else AppColors.border,
                                                 RoundedCornerShape(16.dp)
                                             )
-                                            .clickable { selectedPartyId = party.id; showAddPartyForm = false },
+                                            .premiumClickable {
+                                                selectedPartyId = party.id
+                                                showAddPartyForm = false
+                                            },
                                         colors = CardDefaults.cardColors(
                                             containerColor = if (isSelected) AppColors.primary.copy(alpha = 0.08f) else AppColors.cardBg
                                         )
@@ -309,7 +318,10 @@ fun PartiesScreen(
                         onClick = { showAddPartyForm = true },
                         containerColor = AppColors.primary,
                         contentColor = AppColors.textOnPrimary,
-                        modifier = Modifier.testTag("add_party_fab")
+                        modifier = Modifier
+                            .premiumFabEntrance()
+                            .pressScale()
+                            .testTag("add_party_fab")
                     ) {
                         Icon(imageVector = Icons.Default.Add, contentDescription = "Add Party")
                     }

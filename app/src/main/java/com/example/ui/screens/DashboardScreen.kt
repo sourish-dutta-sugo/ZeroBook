@@ -48,6 +48,7 @@ import com.example.data.Utils
 import com.example.data.Voucher
 import com.example.ui.AppViewModel
 import com.example.ui.DashboardViewModel
+import com.example.ui.animation.premiumClickable
 import com.example.ui.theme.Colors
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -590,7 +591,7 @@ fun QuickActionItem(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(6.dp),
         modifier = Modifier
-            .clickable(onClick = onClick)
+            .premiumClickable(onClick = onClick)
             .padding(4.dp)
     ) {
         Box(

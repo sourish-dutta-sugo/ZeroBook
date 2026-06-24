@@ -1,39 +1,62 @@
 package com.example
-import com.example.ui.theme.AppColors
 
 import android.content.Context
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Assignment
 import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -41,36 +64,83 @@ import androidx.compose.ui.unit.sp
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsControllerCompat
-import android.widget.Toast
+import androidx.navigation.NavDestination.Companion.hierarchy
+import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.NavHostController
+import androidx.navigation.NavType
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.example.data.AppPreferences
 import com.example.data.ChangelogData
 import com.example.data.ChangelogLoader
 import com.example.ui.AppViewModel
 import com.example.ui.DashboardViewModel
-import com.example.ui.screens.*
+import com.example.ui.animation.PremiumBottomNavContent
+import com.example.ui.animation.premiumClickable
+import com.example.ui.animation.premiumDialogEnter
+import com.example.ui.animation.premiumDialogExit
+import com.example.ui.animation.premiumEnterTransition
+import com.example.ui.animation.premiumExitTransition
+import com.example.ui.screens.BankCashScreen
+import com.example.ui.screens.DashboardScreen
+import com.example.ui.screens.ExpensesScreen
+import com.example.ui.screens.InvoiceScreen
+import com.example.ui.screens.LedgerListScreen
+import com.example.ui.screens.NewVoucherScreen
+import com.example.ui.screens.PartiesScreen
+import com.example.ui.screens.PartyDetailScreen
+import com.example.ui.screens.ProductsScreen
+import com.example.ui.screens.QuickSaleScreen
+import com.example.ui.screens.ReportsScreen
+import com.example.ui.screens.SettingsScreen
+import com.example.ui.screens.SetupScreen
+import com.example.ui.screens.SplashScreen
+import com.example.ui.screens.VouchersScreen
+import com.example.ui.theme.AppColors
 import com.example.ui.theme.LocalAppTheme
 import com.example.ui.theme.MyApplicationTheme
 import com.example.ui.theme.ThemeViewModel
 import kotlinx.coroutines.launch
 
-sealed class Screen {
-    object Setup : Screen()
-    object Dashboard : Screen()
-    object Vouchers : Screen()
-    object Parties : Screen()
-    object Settings : Screen()
-    object Reports : Screen()
-    object LedgerBooks : Screen()
-    object Expenses : Screen()
-    object QuickSale : Screen()
-    
-    // Sub-screens
-    object Products : Screen()
-    object BankCash : Screen()
-    data class NewVoucher(val voucherId: String? = null) : Screen()
-    data class Invoice(val voucherId: String) : Screen()
-    data class PartyDetail(val partyId: String) : Screen()
+private object Routes {
+    const val Dashboard = "dashboard"
+    const val Vouchers = "vouchers"
+    const val Parties = "parties"
+    const val Settings = "settings"
+    const val Reports = "reports"
+    const val LedgerBooks = "ledger_books"
+    const val Expenses = "expenses"
+    const val QuickSale = "quick_sale"
+    const val Products = "products"
+    const val BankCash = "bank_cash"
+    const val NewVoucher = "new_voucher?voucherId={voucherId}"
+    const val NewVoucherBase = "new_voucher"
+    const val Invoice = "invoice/{voucherId}"
+    const val PartyDetail = "party_detail/{partyId}"
 }
+
+private data class TopLevelDestination(
+    val route: String,
+    val label: String,
+    val icon: androidx.compose.ui.graphics.vector.ImageVector
+)
+
+private val topLevelDestinations = listOf(
+    TopLevelDestination(Routes.Dashboard, "Dashboard", Icons.Default.GridView),
+    TopLevelDestination(Routes.Vouchers, "Vouchers", Icons.AutoMirrored.Filled.Assignment),
+    TopLevelDestination(Routes.Parties, "Parties", Icons.Default.Group),
+    TopLevelDestination(Routes.Settings, "Settings", Icons.Default.Settings)
+)
+
+private fun newVoucherRoute(voucherId: String? = null): String =
+    voucherId?.let { "${Routes.NewVoucherBase}?voucherId=$it" } ?: Routes.NewVoucherBase
+
+private fun invoiceRoute(voucherId: String): String = "invoice/$voucherId"
+
+private fun partyDetailRoute(partyId: String): String = "party_detail/$partyId"
 
 class MainActivity : ComponentActivity() {
     private val viewModel: AppViewModel by viewModels()
@@ -105,7 +175,6 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainAppEntry(
     viewModel: AppViewModel,
@@ -135,6 +204,7 @@ fun MainAppEntry(
                 }
             }
         }
+
         is AppViewModel.DbInitState.Error -> {
             Box(
                 modifier = Modifier
@@ -181,396 +251,366 @@ fun MainAppEntry(
                 }
             }
         }
+
         is AppViewModel.DbInitState.Success -> {
-            val isSetupCompleted by viewModel.isSetupCompleted.collectAsState()
-            var showSplash by remember { mutableStateOf(true) }
+            AppContent(
+                viewModel = viewModel,
+                themeViewModel = themeViewModel,
+                dashboardViewModel = dashboardViewModel
+            )
+        }
+    }
+}
 
-            if (showSplash) {
-                SplashScreen(onTimeout = { showSplash = false })
-            } else {
-                // Persistent Navigation stack
-                val backstack = remember { mutableStateListOf<Screen>() }
-                var isNavigatingBack by remember { mutableStateOf(false) }
+@Composable
+private fun AppContent(
+    viewModel: AppViewModel,
+    themeViewModel: ThemeViewModel,
+    dashboardViewModel: DashboardViewModel
+) {
+    val context = LocalContext.current
+    val isSetupCompleted by viewModel.isSetupCompleted.collectAsState()
+    var showSplash by remember { mutableStateOf(true) }
 
-                // Screen navigation helpers
-                fun navigateTo(screen: Screen) {
-                    isNavigatingBack = false
-                    backstack.add(screen)
-                }
+    if (showSplash) {
+        SplashScreen(onTimeout = { showSplash = false })
+        return
+    }
 
-                fun navigateBack() {
-                    if (backstack.isNotEmpty()) {
-                        isNavigatingBack = true
-                        backstack.removeAt(backstack.size - 1)
-                    }
-                }
+    val sharedPreferences = remember {
+        context.getSharedPreferences("zerobook_pref", Context.MODE_PRIVATE)
+    }
+    var pinRequired by remember {
+        mutableStateOf(sharedPreferences.getBoolean("pin_enabled", false))
+    }
+    var pinAuthed by remember { mutableStateOf(false) }
+    var changelogData by remember { mutableStateOf<ChangelogData?>(null) }
+    var showChangelog by remember { mutableStateOf(false) }
+    val uiScope = rememberCoroutineScope()
 
-                fun navigateToInvoiceAfterVoucherSave(voucherId: String) {
-                    isNavigatingBack = false
-                    if (backstack.lastOrNull() is Screen.NewVoucher) {
-                        backstack.removeAt(backstack.lastIndex)
-                    }
-                    backstack.add(Screen.Invoice(voucherId))
-                }
+    LaunchedEffect(isSetupCompleted, pinRequired, pinAuthed) {
+        if (isSetupCompleted && (!pinRequired || pinAuthed)) {
+            viewModel.autoAdvanceFinancialYearIfNeeded(context)?.let { updatedFy ->
+                Toast.makeText(context, "Financial year updated to FY $updatedFy", Toast.LENGTH_LONG).show()
+            }
+            val loadedChangelog = ChangelogLoader.load(context)
+            val lastSeenVersion = AppPreferences.getLastSeenChangelogVersion(context)
+            if (loadedChangelog != null && (lastSeenVersion == null || lastSeenVersion != loadedChangelog.version)) {
+                changelogData = loadedChangelog
+                showChangelog = true
+            }
+            pinRequired = sharedPreferences.getBoolean("pin_enabled", false)
+        }
+    }
 
-                // Handle Android software/hardware back gestures and buttons gracefully
-                androidx.activity.compose.BackHandler(enabled = backstack.isNotEmpty()) {
-                    navigateBack()
-                }
+    when {
+        !isSetupCompleted -> {
+            SetupScreen(
+                viewModel = viewModel,
+                onSetupComplete = {}
+            )
+        }
 
-                // Load App Lock Status
-                val sp = remember { context.getSharedPreferences("zerobook_pref", Context.MODE_PRIVATE) }
-                var pinRequired by remember { mutableStateOf(sp.getBoolean("pin_enabled", false)) }
-                var pinAuthed by remember { mutableStateOf(false) }
-                var changelogData by remember { mutableStateOf<ChangelogData?>(null) }
-                var showChangelog by remember { mutableStateOf(false) }
-                val uiScope = rememberCoroutineScope()
+        pinRequired && !pinAuthed -> {
+            PinLockScreen(
+                correctPin = sharedPreferences.getString("lock_pin", "1234") ?: "1234",
+                onAuthentic = { pinAuthed = true }
+            )
+        }
 
-                LaunchedEffect(isSetupCompleted, pinRequired, pinAuthed) {
-                    if (isSetupCompleted && (!pinRequired || pinAuthed)) {
-                        viewModel.autoAdvanceFinancialYearIfNeeded(context)?.let { updatedFy ->
-                            Toast.makeText(context, "Financial year updated to FY $updatedFy", Toast.LENGTH_LONG).show()
-                        }
-                        val loadedChangelog = ChangelogLoader.load(context)
-                        val lastSeenVersion = AppPreferences.getLastSeenChangelogVersion(context)
-                        if (loadedChangelog != null && (lastSeenVersion == null || lastSeenVersion != loadedChangelog.version)) {
-                            changelogData = loadedChangelog
-                            showChangelog = true
-                        }
-                    }
-                }
+        else -> {
+            val navController = rememberNavController()
+            val navBackStackEntry by navController.currentBackStackEntryAsState()
+            val currentDestination = navBackStackEntry?.destination
+            val currentRoute = currentDestination?.route
+            val isTopLevel = topLevelDestinations.any { destination ->
+                currentDestination?.hierarchy?.any { it.route == destination.route } == true
+            }
 
-                val currentScreen = if (!isSetupCompleted) {
-                    Screen.Setup
-                } else if (backstack.isEmpty()) {
-                    Screen.Dashboard
-                } else {
-                    backstack.last()
-                }
-
-                if (pinRequired && !pinAuthed && isSetupCompleted) {
-                    PinLockScreen(
-                        correctPin = sp.getString("lock_pin", "1234") ?: "1234",
-                        onAuthentic = { pinAuthed = true }
-                    )
-                } else {
-                    val isMajorScreen = currentScreen is Screen.Dashboard || currentScreen is Screen.Vouchers || 
-                                        currentScreen is Screen.Parties || currentScreen is Screen.Settings
-
-                    Scaffold(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .statusBarsPadding()
-                            .navigationBarsPadding(),
-                        containerColor = AppColors.screenBg,
-                        bottomBar = {
-                            // Display standard One UI bottom bar on major root tab screens
-                            if (isMajorScreen) {
-                                NavigationBar(
-                                    containerColor = AppColors.cardBg,
-                                    tonalElevation = 6.dp,
-                                    modifier = Modifier
-                                        .navigationBarsPadding()
-                                        .height(72.dp)
-                                ) {
-                                    val currentTab = currentScreen
-                                    
-                                    NavigationBarItem(
-                                        selected = currentTab is Screen.Dashboard,
-                                        onClick = {
-                                            backstack.clear()
-                                        },
-                                        icon = { Icon(imageVector = Icons.Default.GridView, contentDescription = "Dashboard") },
-                                        label = { Text("Dashboard", fontSize = 11.sp, fontWeight = FontWeight.SemiBold) },
-                                        colors = NavigationBarItemDefaults.colors(
-                                            selectedIconColor = AppColors.primary,
-                                            unselectedIconColor = AppColors.textTertiary,
-                                            selectedTextColor = AppColors.primary,
-                                            unselectedTextColor = AppColors.textTertiary,
-                                            indicatorColor = AppColors.primary.copy(alpha = 0.12f)
-                                        )
-                                    )
-
-                                    NavigationBarItem(
-                                        selected = currentTab is Screen.Vouchers,
-                                        onClick = {
-                                            backstack.clear()
-                                            navigateTo(Screen.Vouchers)
-                                        },
-                                        icon = { Icon(imageVector = Icons.AutoMirrored.Filled.Assignment, contentDescription = "Vouchers") },
-                                        label = { Text("Vouchers", fontSize = 11.sp, fontWeight = FontWeight.SemiBold) },
-                                        colors = NavigationBarItemDefaults.colors(
-                                            selectedIconColor = AppColors.primary,
-                                            unselectedIconColor = AppColors.textTertiary,
-                                            selectedTextColor = AppColors.primary,
-                                            unselectedTextColor = AppColors.textTertiary,
-                                            indicatorColor = AppColors.primary.copy(alpha = 0.12f)
-                                        )
-                                    )
-
-                                    NavigationBarItem(
-                                        selected = currentTab is Screen.Parties,
-                                        onClick = {
-                                            backstack.clear()
-                                            navigateTo(Screen.Parties)
-                                        },
-                                        icon = { Icon(imageVector = Icons.Default.Group, contentDescription = "Parties") },
-                                        label = { Text("Parties", fontSize = 11.sp, fontWeight = FontWeight.SemiBold) },
-                                        colors = NavigationBarItemDefaults.colors(
-                                            selectedIconColor = AppColors.primary,
-                                            unselectedIconColor = AppColors.textTertiary,
-                                            selectedTextColor = AppColors.primary,
-                                            unselectedTextColor = AppColors.textTertiary,
-                                            indicatorColor = AppColors.primary.copy(alpha = 0.12f)
-                                        )
-                                    )
-
-                                    NavigationBarItem(
-                                        selected = currentTab is Screen.Settings,
-                                        onClick = {
-                                            backstack.clear()
-                                            navigateTo(Screen.Settings)
-                                        },
-                                        icon = { Icon(imageVector = Icons.Default.Settings, contentDescription = "Settings") },
-                                        label = { Text("Settings", fontSize = 11.sp, fontWeight = FontWeight.SemiBold) },
-                                        colors = NavigationBarItemDefaults.colors(
-                                            selectedIconColor = AppColors.primary,
-                                            unselectedIconColor = AppColors.textTertiary,
-                                            selectedTextColor = AppColors.primary,
-                                            unselectedTextColor = AppColors.textTertiary,
-                                            indicatorColor = AppColors.primary.copy(alpha = 0.12f)
-                                        )
-                                    )
-                                }
-                            }
-                        }
-                    ) { innerPadding ->
-                        Box(
+            Scaffold(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .statusBarsPadding()
+                    .navigationBarsPadding(),
+                containerColor = AppColors.screenBg,
+                bottomBar = {
+                    if (isTopLevel) {
+                        NavigationBar(
+                            containerColor = AppColors.cardBg,
+                            tonalElevation = 6.dp,
                             modifier = Modifier
-                                .fillMaxSize()
-                                .padding(innerPadding)
+                                .navigationBarsPadding()
+                                .height(72.dp)
                         ) {
-                            AnimatedContent(
-                                targetState = currentScreen,
-                                transitionSpec = {
-                                    if (isNavigatingBack) {
-                                        slideInHorizontally(
-                                            initialOffsetX = { -it / 4 },
-                                            animationSpec = tween(300)
-                                        ) togetherWith slideOutHorizontally(
-                                            targetOffsetX = { it },
-                                            animationSpec = tween(300)
+                            topLevelDestinations.forEach { destination ->
+                                val selected = currentDestination?.hierarchy?.any { it.route == destination.route } == true
+                                NavigationBarItem(
+                                    selected = selected,
+                                    onClick = { navController.navigateToTopLevel(destination.route) },
+                                    icon = {
+                                        PremiumBottomNavContent(
+                                            selected = selected,
+                                            icon = destination.icon,
+                                            label = destination.label
                                         )
-                                    } else {
-                                        slideInHorizontally(
-                                            initialOffsetX = { it },
-                                            animationSpec = tween(300)
-                                        ) togetherWith slideOutHorizontally(
-                                            targetOffsetX = { -it / 4 },
-                                            animationSpec = tween(300)
-                                        )
-                                    }
-                                },
-                                label = "main_screen_navigation"
-                            ) { animatedScreen ->
-                            when (animatedScreen) {
-                                is Screen.Setup -> {
-                                    SetupScreen(
-                                        viewModel = viewModel,
-                                        onSetupComplete = {
-                                            // Profile saved triggers StateFlow update automatically
-                                        }
+                                    },
+                                    label = {},
+                                    colors = NavigationBarItemDefaults.colors(
+                                        selectedIconColor = AppColors.primary,
+                                        unselectedIconColor = AppColors.textTertiary,
+                                        selectedTextColor = AppColors.primary,
+                                        unselectedTextColor = AppColors.textTertiary,
+                                        indicatorColor = AppColors.primary.copy(alpha = 0.12f)
                                     )
-                                }
-
-                                is Screen.Dashboard -> {
-                                    DashboardScreen(
-                                        viewModel = viewModel,
-                                        dashboardViewModel = dashboardViewModel,
-                                        isDesktop = false,
-                                        onQuickAction = { action ->
-                                            when (action) {
-                                                "SALE" -> navigateTo(Screen.NewVoucher())
-                                                "PURCHASE" -> navigateTo(Screen.NewVoucher())
-                                                "RECEIPT" -> navigateTo(Screen.BankCash)
-                                                "PAYMENT" -> navigateTo(Screen.BankCash)
-                                                "REPORTS" -> navigateTo(Screen.Reports)
-                                                "QUICK_SALE" -> navigateTo(Screen.QuickSale)
-                                                "EXPENSES" -> navigateTo(Screen.Expenses)
-                                                "PARTY" -> {
-                                                    backstack.clear()
-                                                    navigateTo(Screen.Parties)
-                                                }
-                                            }
-                                        }
-                                    )
-                                }
-
-                                is Screen.Vouchers -> {
-                                    VouchersScreen(
-                                        viewModel = viewModel,
-                                        isDesktop = false,
-                                        navigateToNewVoucher = { navigateTo(Screen.NewVoucher()) },
-                                        navigateToInvoice = { id -> navigateTo(Screen.Invoice(id)) }
-                                    )
-                                }
-
-                                is Screen.Parties -> {
-                                    PartiesScreen(
-                                        viewModel = viewModel,
-                                        isDesktop = false,
-                                        onPartySelected = { id -> navigateTo(Screen.PartyDetail(id)) }
-                                    )
-                                }
-
-                                is Screen.Settings -> {
-                                    SettingsScreen(
-                                        viewModel = viewModel,
-                                        themeViewModel = themeViewModel,
-                                        isDesktop = false,
-                                        navigateToProducts = { navigateTo(Screen.Products) },
-                                        navigateToLedgerBooks = { navigateTo(Screen.LedgerBooks) },
-                                        onNavigateBack = { navigateBack() }
-                                    )
-                                }
-
-                                is Screen.Reports -> {
-                                    ReportsScreen(
-                                        viewModel = viewModel,
-                                        isDesktop = false,
-                                        navigateToLedgerBooks = { navigateTo(Screen.LedgerBooks) },
-                                        navigateToExpenses = { navigateTo(Screen.Expenses) },
-                                        navigateToNewVoucher = { navigateTo(Screen.NewVoucher(it)) },
-                                        onNavigateBack = { navigateBack() }
-                                    )
-                                }
-
-                                is Screen.Products -> {
-                                    ProductsScreen(
-                                        viewModel = viewModel,
-                                        onNavigateBack = { navigateBack() }
-                                    )
-                                }
-
-                                is Screen.BankCash -> {
-                                    BankCashScreen(
-                                        viewModel = viewModel,
-                                        onNavigateBack = { navigateBack() }
-                                    )
-                                }
-
-                                is Screen.Expenses -> {
-                                    ExpensesScreen(
-                                        viewModel = viewModel,
-                                        onNavigateBack = { navigateBack() }
-                                    )
-                                }
-
-                                is Screen.QuickSale -> {
-                                    QuickSaleScreen(
-                                        viewModel = viewModel,
-                                        onNavigateBack = { navigateBack() }
-                                    )
-                                }
-
-                                is Screen.NewVoucher -> {
-                                    NewVoucherScreen(
-                                        viewModel = viewModel,
-                                        voucherId = animatedScreen.voucherId,
-                                        isDesktop = false,
-                                        onNavigateBack = { navigateBack() },
-                                        onNavigateToInvoice = { id -> navigateToInvoiceAfterVoucherSave(id) },
-                                        onNavigateToPartyDetail = { id -> navigateTo(Screen.PartyDetail(id)) }
-                                    )
-                                }
-
-                                is Screen.Invoice -> {
-                                    InvoiceScreen(
-                                        viewModel = viewModel,
-                                        voucherId = animatedScreen.voucherId,
-                                        onNavigateBack = { navigateBack() },
-                                        onEditVoucher = { id -> navigateTo(Screen.NewVoucher(id)) },
-                                        onCreateSaleFromVoucher = { sourceVoucherId ->
-                                            val sourceVoucher = viewModel.getVoucherById(sourceVoucherId)
-                                            viewModel.setVoucherPrefillRequest(
-                                                AppViewModel.VoucherPrefillRequest(
-                                                    voucherType = "SALE",
-                                                    partyId = sourceVoucher?.partyId,
-                                                    invoiceId = null,
-                                                    amount = null,
-                                                    sourceVoucherId = sourceVoucherId
-                                                )
-                                            )
-                                            navigateTo(Screen.NewVoucher())
-                                        }
-                                    )
-                                }
-
-                                is Screen.LedgerBooks -> {
-                                    LedgerListScreen(
-                                        viewModel = viewModel,
-                                        onNavigateBack = { navigateBack() }
-                                    )
-                                }
-
-                                is Screen.PartyDetail -> {
-                                    PartyDetailScreen(
-                                        viewModel = viewModel,
-                                        partyId = animatedScreen.partyId,
-                                        onNavigateBack = { navigateBack() }
-                                    )
-                                }
-                            }
+                                )
                             }
                         }
                     }
+                }
+            ) { innerPadding ->
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(innerPadding)
+                ) {
+                    ZeroBookNavHost(
+                        navController = navController,
+                        viewModel = viewModel,
+                        themeViewModel = themeViewModel,
+                        dashboardViewModel = dashboardViewModel
+                    )
+                }
+            }
 
-                    if (showChangelog && changelogData != null) {
-                        val configuration = LocalConfiguration.current
-                        AlertDialog(
-                            onDismissRequest = {},
-                            confirmButton = {
-                                Button(
-                                    onClick = {
-                                        val version = changelogData?.version.orEmpty()
-                                        if (version.isNotBlank()) {
-                                            uiScope.launch {
-                                                AppPreferences.setLastSeenChangelogVersion(context, version)
-                                                showChangelog = false
-                                            }
-                                        } else {
+            if (showChangelog && changelogData != null) {
+                val configuration = LocalConfiguration.current
+                androidx.compose.animation.AnimatedVisibility(
+                    visible = showChangelog,
+                    enter = premiumDialogEnter(),
+                    exit = premiumDialogExit()
+                ) {
+                    androidx.compose.material3.AlertDialog(
+                        onDismissRequest = {},
+                        confirmButton = {
+                            Button(
+                                onClick = {
+                                    val version = changelogData?.version.orEmpty()
+                                    if (version.isNotBlank()) {
+                                        uiScope.launch {
+                                            AppPreferences.setLastSeenChangelogVersion(context, version)
                                             showChangelog = false
                                         }
-                                    }
-                                ) {
-                                    Text("Got it")
-                                }
-                            },
-                            title = {
-                                Text("What's New in ZeroBook ${changelogData?.version.orEmpty()}")
-                            },
-                            text = {
-                                Column(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .heightIn(max = configuration.screenHeightDp.dp * 0.6f)
-                                        .verticalScroll(rememberScrollState()),
-                                    verticalArrangement = Arrangement.spacedBy(10.dp)
-                                ) {
-                                    changelogData?.changes?.forEach { change ->
-                                        Text("• $change", color = Color(0xFF111827))
+                                    } else {
+                                        showChangelog = false
                                     }
                                 }
-                            },
-                            containerColor = Color.White,
-                            textContentColor = Color(0xFF111827),
-                            titleContentColor = Color(0xFF111827)
-                        )
+                            ) {
+                                Text("Got it")
+                            }
+                        },
+                        title = {
+                            Text("What's New in ZeroBook ${changelogData?.version.orEmpty()}")
+                        },
+                        text = {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .heightIn(max = configuration.screenHeightDp.dp * 0.6f)
+                                    .verticalScroll(rememberScrollState()),
+                                verticalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                changelogData?.changes?.forEach { change ->
+                                    Text("• $change", color = Color(0xFF111827))
+                                }
+                            }
+                        },
+                        containerColor = Color.White,
+                        textContentColor = Color(0xFF111827),
+                        titleContentColor = Color(0xFF111827)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ZeroBookNavHost(
+    navController: NavHostController,
+    viewModel: AppViewModel,
+    themeViewModel: ThemeViewModel,
+    dashboardViewModel: DashboardViewModel
+) {
+    NavHost(
+        navController = navController,
+        startDestination = Routes.Dashboard,
+        enterTransition = premiumEnterTransition(navigatingBack = false),
+        exitTransition = premiumExitTransition(navigatingBack = false),
+        popEnterTransition = premiumEnterTransition(navigatingBack = true),
+        popExitTransition = premiumExitTransition(navigatingBack = true)
+    ) {
+        composable(Routes.Dashboard) {
+            DashboardScreen(
+                viewModel = viewModel,
+                dashboardViewModel = dashboardViewModel,
+                isDesktop = false,
+                onQuickAction = { action ->
+                    when (action) {
+                        "SALE", "PURCHASE" -> navController.navigate(newVoucherRoute())
+                        "RECEIPT", "PAYMENT" -> navController.navigate(Routes.BankCash)
+                        "REPORTS" -> navController.navigate(Routes.Reports)
+                        "QUICK_SALE" -> navController.navigate(Routes.QuickSale)
+                        "EXPENSES" -> navController.navigate(Routes.Expenses)
+                        "PARTY" -> navController.navigateToTopLevel(Routes.Parties)
                     }
                 }
+            )
+        }
+
+        composable(Routes.Vouchers) {
+            VouchersScreen(
+                viewModel = viewModel,
+                isDesktop = false,
+                navigateToNewVoucher = { id -> navController.navigate(newVoucherRoute(id)) },
+                navigateToInvoice = { id -> navController.navigate(invoiceRoute(id)) }
+            )
+        }
+
+        composable(Routes.Parties) {
+            PartiesScreen(
+                viewModel = viewModel,
+                isDesktop = false,
+                onPartySelected = { id -> navController.navigate(partyDetailRoute(id)) }
+            )
+        }
+
+        composable(Routes.Settings) {
+            SettingsScreen(
+                viewModel = viewModel,
+                themeViewModel = themeViewModel,
+                isDesktop = false,
+                navigateToProducts = { navController.navigate(Routes.Products) },
+                navigateToLedgerBooks = { navController.navigate(Routes.LedgerBooks) },
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(Routes.Reports) {
+            ReportsScreen(
+                viewModel = viewModel,
+                isDesktop = false,
+                navigateToLedgerBooks = { navController.navigate(Routes.LedgerBooks) },
+                navigateToExpenses = { navController.navigate(Routes.Expenses) },
+                navigateToNewVoucher = { navController.navigate(newVoucherRoute(it)) },
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(Routes.Products) {
+            ProductsScreen(
+                viewModel = viewModel,
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(Routes.BankCash) {
+            BankCashScreen(
+                viewModel = viewModel,
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(Routes.Expenses) {
+            ExpensesScreen(
+                viewModel = viewModel,
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(Routes.QuickSale) {
+            QuickSaleScreen(
+                viewModel = viewModel,
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(
+            route = Routes.NewVoucher,
+            arguments = listOf(
+                navArgument("voucherId") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                }
+            )
+        ) { entry ->
+            NewVoucherScreen(
+                viewModel = viewModel,
+                voucherId = entry.arguments?.getString("voucherId"),
+                isDesktop = false,
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToInvoice = { voucherId ->
+                    navController.popBackStack()
+                    navController.navigate(invoiceRoute(voucherId))
+                },
+                onNavigateToPartyDetail = { id -> navController.navigate(partyDetailRoute(id)) }
+            )
+        }
+
+        composable(
+            route = Routes.Invoice,
+            arguments = listOf(navArgument("voucherId") { type = NavType.StringType })
+        ) { entry ->
+            val voucherId = entry.arguments?.getString("voucherId").orEmpty()
+            InvoiceScreen(
+                viewModel = viewModel,
+                voucherId = voucherId,
+                onNavigateBack = { navController.popBackStack() },
+                onEditVoucher = { id -> navController.navigate(newVoucherRoute(id)) },
+                onCreateSaleFromVoucher = { sourceVoucherId ->
+                    val sourceVoucher = viewModel.getVoucherById(sourceVoucherId)
+                    viewModel.setVoucherPrefillRequest(
+                        AppViewModel.VoucherPrefillRequest(
+                            voucherType = "SALE",
+                            partyId = sourceVoucher?.partyId,
+                            invoiceId = null,
+                            amount = null,
+                            sourceVoucherId = sourceVoucherId
+                        )
+                    )
+                    navController.navigate(newVoucherRoute())
+                }
+            )
+        }
+
+        composable(Routes.LedgerBooks) {
+            LedgerListScreen(
+                viewModel = viewModel,
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(
+            route = Routes.PartyDetail,
+            arguments = listOf(navArgument("partyId") { type = NavType.StringType })
+        ) { entry ->
+            PartyDetailScreen(
+                viewModel = viewModel,
+                partyId = entry.arguments?.getString("partyId").orEmpty(),
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+    }
 }
-}
-}
+
+private fun NavHostController.navigateToTopLevel(route: String) {
+    navigate(route) {
+        popUpTo(graph.findStartDestination().id) {
+            saveState = true
+        }
+        launchSingleTop = true
+        restoreState = true
+    }
 }
 
 @Composable
@@ -605,12 +645,9 @@ fun PinLockScreen(
 
         Spacer(modifier = Modifier.height(32.dp))
 
-        // Visual indicator bullets
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            for (i in 0 until 4) {
-                val active = i < enteredText.length
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            repeat(4) { index ->
+                val active = index < enteredText.length
                 Box(
                     modifier = Modifier
                         .size(16.dp)
@@ -629,10 +666,9 @@ fun PinLockScreen(
 
         Spacer(modifier = Modifier.height(48.dp))
 
-        // Grid PIN panel keys
         Column(
             verticalArrangement = Arrangement.spacedBy(16.dp),
-            modifier = Modifier.width(240.dp)
+            modifier = Modifier.fillMaxWidth(0.6f)
         ) {
             val keys = listOf(
                 listOf("1", "2", "3"),
@@ -645,17 +681,14 @@ fun PinLockScreen(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    row.forEach { k ->
+                    row.forEach { key ->
                         Box(
                             modifier = Modifier
                                 .size(56.dp)
-                                .clickable {
+                                .premiumClickable {
                                     hasError = false
-                                    when (k) {
-                                        "CLR" -> {
-                                            enteredText = ""
-                                        }
-
+                                    when (key) {
+                                        "CLR" -> enteredText = ""
                                         "OK" -> {
                                             if (enteredText == correctPin) {
                                                 onAuthentic()
@@ -664,10 +697,9 @@ fun PinLockScreen(
                                                 enteredText = ""
                                             }
                                         }
-
                                         else -> {
                                             if (enteredText.length < 4) {
-                                                enteredText += k
+                                                enteredText += key
                                                 if (enteredText.length == 4 && enteredText == correctPin) {
                                                     onAuthentic()
                                                 }
@@ -678,10 +710,14 @@ fun PinLockScreen(
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
-                                text = k,
+                                text = key,
                                 fontSize = 18.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = if (k == "CLR" || k == "OK") MaterialTheme.colorScheme.primary else Color.Black
+                                color = if (key == "CLR" || key == "OK") {
+                                    MaterialTheme.colorScheme.primary
+                                } else {
+                                    Color.Black
+                                }
                             )
                         }
                     }

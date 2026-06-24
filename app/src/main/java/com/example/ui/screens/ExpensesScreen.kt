@@ -55,6 +55,8 @@ import com.example.data.filterDecimalInput
 import com.example.services.ExportStorageManager
 import com.example.services.ExportTarget
 import com.example.ui.AppViewModel
+import com.example.ui.animation.premiumFabEntrance
+import com.example.ui.animation.pressScale
 import com.example.ui.theme.AppColors
 import java.io.File
 import java.util.UUID
@@ -98,7 +100,13 @@ fun ExpensesScreen(
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = { showForm = true }, containerColor = AppColors.primary) {
+            FloatingActionButton(
+                onClick = { showForm = true },
+                containerColor = AppColors.primary,
+                modifier = Modifier
+                    .premiumFabEntrance()
+                    .pressScale()
+            ) {
                 Icon(Icons.Default.Add, contentDescription = "Add expense", tint = AppColors.textOnPrimary)
             }
         }
@@ -133,7 +141,8 @@ fun ExpensesScreen(
                         target = ExportTarget.Reports
                     )
                     Toast.makeText(viewModel.getApplication(), "Saved to ${result.locationLabel}", Toast.LENGTH_LONG).show()
-                }
+                },
+                modifier = Modifier.pressScale()
             ) {
                 Text("Export to CSV")
             }

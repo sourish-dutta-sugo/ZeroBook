@@ -29,6 +29,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.*
 import com.example.ui.AppViewModel
+import com.example.ui.animation.premiumClickable
+import com.example.ui.animation.premiumFabEntrance
+import com.example.ui.animation.pressScale
 import com.example.ui.theme.*
 import java.util.UUID
 
@@ -92,7 +95,10 @@ fun BankCashScreen(
                     onClick = { showAddForm = true },
                     containerColor = MaterialTheme.colorScheme.primary,
                     contentColor = Color.White,
-                    modifier = Modifier.testTag("add_tx_fab")
+                    modifier = Modifier
+                        .premiumFabEntrance()
+                        .pressScale()
+                        .testTag("add_tx_fab")
                 ) {
                     Icon(imageVector = Icons.Default.Add, contentDescription = "Add Transaction")
                 }

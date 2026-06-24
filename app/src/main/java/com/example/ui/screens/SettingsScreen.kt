@@ -68,6 +68,8 @@ import com.example.ui.theme.LocalAppTheme
 import com.example.ui.theme.ThemeViewModel
 import com.example.ui.theme.parseGstinInput
 import com.example.ui.theme.*
+import com.example.ui.animation.pressScale
+import com.example.ui.animation.premiumClickable
 import com.example.utils.copyUriToInternalStorage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -1815,7 +1817,9 @@ fun SettingsMenuSection(
                             exportCsv()
                         },
                         shape = RoundedCornerShape(8.dp),
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier
+                            .weight(1f)
+                            .pressScale(),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = AppColors.primary,
                             contentColor = AppColors.textOnPrimary
@@ -1826,7 +1830,9 @@ fun SettingsMenuSection(
                     OutlinedButton(
                         onClick = { importCsv() },
                         shape = RoundedCornerShape(8.dp),
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier
+                            .weight(1f)
+                            .pressScale()
                     ) {
                         Text("Import CSV", fontSize = 11.sp)
                     }
@@ -1845,7 +1851,9 @@ fun SettingsMenuSection(
                             }
                         },
                         shape = RoundedCornerShape(8.dp),
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier
+                            .weight(1f)
+                            .pressScale()
                     ) {
                         Text("Backup Database", fontSize = 11.sp)
                     }
@@ -1865,7 +1873,7 @@ fun SettingsMenuCard(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onClick() }
+            .premiumClickable { onClick() }
             .border(1.dp, AppColors.border, RoundedCornerShape(16.dp)),
         colors = CardDefaults.cardColors(containerColor = AppColors.cardBg)
     ) {
@@ -1930,7 +1938,7 @@ private fun ThemePickerRow(
                 verticalArrangement = Arrangement.spacedBy(6.dp),
                 modifier = Modifier
                     .weight(1f)
-                    .clickable { onThemeSelected(name) }
+                    .premiumClickable { onThemeSelected(name) }
             ) {
                 Box(
                     modifier = Modifier

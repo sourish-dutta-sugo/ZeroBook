@@ -71,6 +71,9 @@ import com.example.data.Product
 import com.example.data.Utils
 import com.example.data.filterDecimalInput
 import com.example.ui.AppViewModel
+import com.example.ui.animation.premiumCombinedClickable
+import com.example.ui.animation.premiumFabEntrance
+import com.example.ui.animation.pressScale
 import com.example.ui.theme.AppColors
 import com.example.utils.HsnEntry
 import com.example.utils.HsnLookup
@@ -185,7 +188,10 @@ fun ProductsScreen(
                 },
                 containerColor = AppColors.primary,
                 contentColor = AppColors.textOnPrimary,
-                modifier = Modifier.testTag("add_product_fab")
+                modifier = Modifier
+                    .premiumFabEntrance()
+                    .pressScale()
+                    .testTag("add_product_fab")
             ) {
                 Icon(Icons.Default.Add, contentDescription = "Add Product")
             }
@@ -283,7 +289,8 @@ fun ProductsScreen(
                         selectedProduct = null
                         editingProductId = product.id
                         sheetMode = ProductSheetMode.EDIT
-                    }
+                    },
+                    modifier = Modifier.pressScale()
                 ) {
                     Text("Edit")
                 }
@@ -307,7 +314,8 @@ fun ProductsScreen(
                         actionProduct = null
                         editingProductId = product.id
                         sheetMode = ProductSheetMode.EDIT
-                    }
+                    },
+                    modifier = Modifier.pressScale()
                 ) {
                     Text("Edit")
                 }
@@ -355,7 +363,7 @@ private fun ProductRow(
         modifier = Modifier
             .fillMaxWidth()
             .border(0.5.dp, Color(0xFFE8E8E8), RoundedCornerShape(8.dp))
-            .combinedClickable(
+            .premiumCombinedClickable(
                 onClick = onOpenDetail,
                 onLongClick = onMore
             ),
@@ -730,6 +738,7 @@ fun ProductEditorScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(48.dp)
+                    .pressScale()
                     .testTag("save_product_button"),
                 colors = ButtonDefaults.buttonColors(containerColor = AppColors.primary)
             ) {
