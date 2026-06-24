@@ -118,7 +118,7 @@ dependencies {
   implementation(libs.okhttp)
   implementation("com.google.mlkit:text-recognition:16.0.1")
   implementation("com.google.mlkit:barcode-scanning:17.3.0")
-  // implementation(libs.play.services.location)
+  implementation(libs.play.services.location)
   implementation(libs.retrofit)
   implementation("com.sun.mail:android-mail:1.6.7")
   implementation("com.sun.mail:android-activation:1.6.7")

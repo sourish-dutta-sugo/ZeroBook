@@ -1,30 +1,61 @@
 package com.example.ui.screens
-import com.example.ui.theme.AppColors
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
+import android.Manifest
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Business
 import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -32,67 +63,113 @@ import com.example.R
 import com.example.data.BusinessProfile
 import com.example.data.Utils
 import com.example.ui.AppViewModel
+import com.example.ui.theme.AppColors
 import com.example.ui.theme.Colors
+import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import com.google.accompanist.permissions.rememberMultiplePermissionsState
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(
+    ExperimentalFoundationApi::class,
+    ExperimentalMaterial3Api::class,
+    ExperimentalPermissionsApi::class
+)
 @Composable
 fun SetupScreen(
     viewModel: AppViewModel,
     onSetupComplete: () -> Unit
 ) {
+    val context = LocalContext.current
+    val keyboardController = LocalSoftwareKeyboardController.current
+    val scope = rememberCoroutineScope()
+
     var businessName by remember { mutableStateOf("") }
     var ownerName by remember { mutableStateOf("") }
     var address by remember { mutableStateOf("") }
     var city by remember { mutableStateOf("") }
-    var selectedStateInfo by remember { mutableStateOf(Utils.INDIAN_STATES[18]) } // West Bengal as default
+    var selectedStateInfo by remember { mutableStateOf(Utils.INDIAN_STATES[18]) }
     var pin by remember { mutableStateOf("") }
     var phone by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var gstin by remember { mutableStateOf("") }
     var pan by remember { mutableStateOf("") }
-    
-    // Bank Details
     var bankName by remember { mutableStateOf("") }
     var accountNo by remember { mutableStateOf("") }
     var ifsc by remember { mutableStateOf("") }
     var bankBranch by remember { mutableStateOf("") }
     var ifscVerifiedMessage by remember { mutableStateOf("") }
-
     var dropdownExpanded by remember { mutableStateOf(false) }
-    var showError by remember { mutableStateOf(false) }
-    var errorMessage by remember { mutableStateOf("") }
     var askForSampleData by remember { mutableStateOf(false) }
-
-    // Loading states for smart lookups
     var isPinLoading by remember { mutableStateOf(false) }
     var isGstinLoading by remember { mutableStateOf(false) }
     var isIfscLoading by remember { mutableStateOf(false) }
-    var pinLookupMessage by remember { mutableStateOf("") }
     var pinLookupError by remember { mutableStateOf("") }
-
-    // Validation styling states
-    var gstinError by remember { mutableStateOf(false) }
-    var pinError by remember { mutableStateOf(false) }
-    var ifscError by remember { mutableStateOf(false) }
+    var locationDetectionMessage by remember { mutableStateOf("") }
+    var submitAttempted by remember { mutableStateOf(false) }
+    var locationPermissionRequested by rememberSaveable { mutableStateOf(false) }
+    var locationDetectionAttempted by rememberSaveable { mutableStateOf(false) }
+    var isLocationDetecting by remember { mutableStateOf(false) }
 
     val scrollState = rememberScrollState()
+    val locationPermissionsState = rememberMultiplePermissionsState(
+        permissions = listOf(
+            Manifest.permission.ACCESS_COARSE_LOCATION,
+            Manifest.permission.ACCESS_FINE_LOCATION
+        )
+    )
+
+    val businessNameFocusRequester = remember { FocusRequester() }
+    val addressFocusRequester = remember { FocusRequester() }
+    val pinFocusRequester = remember { FocusRequester() }
+
+    val businessNameBringIntoViewRequester = remember { BringIntoViewRequester() }
+    val addressBringIntoViewRequester = remember { BringIntoViewRequester() }
+    val pinBringIntoViewRequester = remember { BringIntoViewRequester() }
+
+    val missingFields = remember(businessName, address, pin) {
+        missingRequiredBusinessFields(
+            businessName = businessName,
+            address = address,
+            pinCode = pin
+        )
+    }
+
+    val businessNameError = submitAttempted && missingFields.contains(RequiredBusinessField.BusinessName)
+    val addressError = submitAttempted && missingFields.contains(RequiredBusinessField.Address)
+    val pinError = submitAttempted && missingFields.contains(RequiredBusinessField.PinCode)
+
+    fun focusFirstInvalidField(field: RequiredBusinessField) {
+        scope.launch {
+            when (field) {
+                RequiredBusinessField.BusinessName -> {
+                    businessNameBringIntoViewRequester.bringIntoView()
+                    businessNameFocusRequester.requestFocus()
+                }
+                RequiredBusinessField.Address -> {
+                    addressBringIntoViewRequester.bringIntoView()
+                    addressFocusRequester.requestFocus()
+                }
+                RequiredBusinessField.PinCode -> {
+                    pinBringIntoViewRequester.bringIntoView()
+                    pinFocusRequester.requestFocus()
+                }
+            }
+            keyboardController?.show()
+        }
+    }
 
     LaunchedEffect(pin) {
         if (pin.length == 6 && pin.all { it.isDigit() }) {
             delay(1000)
             isPinLoading = true
-            pinError = false
             val result = fetchPinLookup(pin)
             isPinLoading = false
             if (result != null) {
                 city = result.city
                 pinLookupError = ""
-                Utils.INDIAN_STATES.find {
-                    it.second == result.stateCode || it.first.equals(result.state, ignoreCase = true)
-                }?.let { selectedStateInfo = it }
+                resolveIndianStateInfo(result.state)?.let { selectedStateInfo = it }
             } else {
-                pinLookupMessage = "City not found — enter manually"
                 pinLookupError = "Unable to fetch location"
             }
         } else {
@@ -101,12 +178,31 @@ fun SetupScreen(
         }
     }
 
+    LaunchedEffect(Unit) {
+        if (!locationPermissionsState.allPermissionsGranted && !locationPermissionRequested) {
+            locationPermissionRequested = true
+            locationPermissionsState.launchMultiplePermissionRequest()
+        }
+    }
+
+    LaunchedEffect(locationPermissionsState.allPermissionsGranted) {
+        if (locationPermissionsState.allPermissionsGranted && !locationDetectionAttempted) {
+            locationDetectionAttempted = true
+            isLocationDetecting = true
+            detectGstStateInfoFromLocation(context)?.let { detectedState ->
+                selectedStateInfo = detectedState
+                locationDetectionMessage = "GST state code auto-detected via location."
+            }
+            isLocationDetecting = false
+        }
+    }
+
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         containerColor = AppColors.screenBg,
         topBar = {
             TopAppBar(
-                title = { 
+                title = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Image(
                             painter = painterResource(R.drawable.zerobook_icon),
@@ -130,7 +226,7 @@ fun SetupScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Colors.surface) // Setup screen requested in Section 1 to have White background
+                .background(Colors.surface)
                 .padding(innerPadding)
                 .imePadding()
         ) {
@@ -142,7 +238,6 @@ fun SetupScreen(
                     .padding(start = 16.dp, top = 24.dp, end = 16.dp, bottom = 100.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // Header block
                 Column(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalAlignment = Alignment.CenterHorizontally
@@ -165,7 +260,6 @@ fun SetupScreen(
                     Text(
                         text = "Record. Transact. Grow.",
                         fontSize = 13.sp,
-                        fontWeight = FontWeight.Normal,
                         color = AppColors.textSecondary
                     )
                 }
@@ -179,81 +273,119 @@ fun SetupScreen(
                     color = AppColors.primary
                 )
 
-                // Business Name Field
-                RetailTextField(
-                    value = businessName,
-                    onValueChange = { businessName = it },
-                    label = "Business Name *",
-                    modifier = Modifier.fillMaxWidth().testTag("setup_business_name"),
-                    singleLine = true
-                )
+                Column(modifier = Modifier.bringIntoViewRequester(businessNameBringIntoViewRequester)) {
+                    RetailTextField(
+                        value = businessName,
+                        onValueChange = { businessName = it },
+                        label = "Business Name *",
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .focusRequester(businessNameFocusRequester)
+                            .testTag("setup_business_name"),
+                        singleLine = true,
+                        isError = businessNameError,
+                        supportingText = if (businessNameError) {
+                            {
+                                Text("This field is required", color = MaterialTheme.colorScheme.error)
+                            }
+                        } else {
+                            null
+                        }
+                    )
+                }
 
-                // Owner Name Field
                 RetailTextField(
                     value = ownerName,
                     onValueChange = { ownerName = it },
-                    label = "Owner / Signatory Name *",
+                    label = "Owner / Signatory Name",
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true
                 )
 
-                // Address Field
-                RetailTextField(
-                    value = address,
-                    onValueChange = { address = it },
-                    label = "Address (Street / Area) *",
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = false
-                )
+                Column(modifier = Modifier.bringIntoViewRequester(addressBringIntoViewRequester)) {
+                    RetailTextField(
+                        value = address,
+                        onValueChange = { address = it },
+                        label = "Address (Street / Area) *",
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .focusRequester(addressFocusRequester),
+                        singleLine = false,
+                        isError = addressError,
+                        supportingText = if (addressError) {
+                            {
+                                Text("This field is required", color = MaterialTheme.colorScheme.error)
+                            }
+                        } else {
+                            null
+                        }
+                    )
+                }
 
-                // PIN & City Row
                 Row(
-                    modifier = Modifier.fillMaxWidth(), 
+                    modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    // PIN Code
-                    RetailTextField(
-                        value = pin,
-                        onValueChange = { input ->
-                            val clean = input.filter { it.isDigit() }
-                            if (clean.length <= 6) {
-                                pin = clean
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .bringIntoViewRequester(pinBringIntoViewRequester)
+                    ) {
+                        RetailTextField(
+                            value = pin,
+                            onValueChange = { input ->
+                                val clean = input.filter { it.isDigit() }
+                                if (clean.length <= 6) {
+                                    pin = clean
+                                }
+                            },
+                            label = "PIN Code (6-digit) *",
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .focusRequester(pinFocusRequester),
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            trailingIcon = {
+                                if (isPinLoading) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(20.dp),
+                                        strokeWidth = 2.dp
+                                    )
+                                }
+                            },
+                            isError = pinError,
+                            supportingText = if (pinError) {
+                                {
+                                    Text("This field is required", color = MaterialTheme.colorScheme.error)
+                                }
+                            } else {
+                                null
                             }
-                        },
-                        label = "PIN Code (6-digit) *",
-                        modifier = Modifier.weight(1f),
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                        trailingIcon = {
-                            if (isPinLoading) {
-                                CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
-                            }
-                        },
-                        isError = pinError
-                    )
-                    // City
+                        )
+                    }
+
                     RetailTextField(
                         value = city,
                         onValueChange = { city = it },
-                        label = "City *",
+                        label = "City / District",
                         modifier = Modifier.weight(1f),
                         singleLine = true
                     )
                 }
+
                 if (pinLookupError.isNotBlank()) {
                     Text(
                         text = pinLookupError,
-                        color = Color.Gray,
+                        color = AppColors.textSecondary,
                         fontSize = 11.sp
                     )
                 }
 
-                // State selector
                 Box(modifier = Modifier.fillMaxWidth()) {
                     RetailTextField(
                         value = "${selectedStateInfo.first} (Code: ${selectedStateInfo.second})",
                         onValueChange = {},
-                        label = "State & GST Code *",
+                        label = "State & GST Code",
                         readOnly = true,
                         modifier = Modifier.fillMaxWidth(),
                         trailingIcon = {
@@ -264,41 +396,38 @@ fun SetupScreen(
                             )
                         }
                     )
-                    DropdownMenu(
+                    StateDropdownMenu(
                         expanded = dropdownExpanded,
                         onDismissRequest = { dropdownExpanded = false },
-                        modifier = Modifier
-                            .fillMaxWidth(0.9f)
-                            .height(300.dp)
-                            .background(AppColors.cardBg)
-                    ) {
-                        Utils.INDIAN_STATES.forEach { statePair ->
-                            DropdownMenuItem(
-                                text = {
-                                    Text(
-                                        "${statePair.first} (Code ${statePair.second})",
-                                        color = AppColors.textPrimary
-                                    )
-                                },
-                                onClick = {
-                                    selectedStateInfo = statePair
-                                    dropdownExpanded = false
-                                },
-                                colors = MenuDefaults.itemColors(textColor = AppColors.textPrimary)
-                            )
-                        }
-                    }
+                        onStateSelected = {
+                            selectedStateInfo = it
+                            dropdownExpanded = false
+                            locationDetectionMessage = ""
+                        },
+                        modifier = Modifier.background(AppColors.cardBg)
+                    )
                 }
 
-                // Phone & Email
+                if (isLocationDetecting || locationDetectionMessage.isNotBlank()) {
+                    Text(
+                        text = if (isLocationDetecting) {
+                            "Detecting GST state code from your location..."
+                        } else {
+                            locationDetectionMessage
+                        },
+                        color = AppColors.textSecondary,
+                        fontSize = 11.sp
+                    )
+                }
+
                 Row(
-                    modifier = Modifier.fillMaxWidth(), 
+                    modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     RetailTextField(
                         value = phone,
                         onValueChange = { phone = it },
-                        label = "Phone Number *",
+                        label = "Phone Number",
                         modifier = Modifier.weight(1f),
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone)
@@ -306,72 +435,69 @@ fun SetupScreen(
                     RetailTextField(
                         value = email,
                         onValueChange = { email = it },
-                        label = "Email Address *",
+                        label = "Email Address",
                         modifier = Modifier.weight(1f),
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email)
                     )
                 }
 
-                // GSTIN & PAN
                 Row(
-                    modifier = Modifier.fillMaxWidth(), 
+                    modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     RetailTextField(
                         value = gstin,
                         onValueChange = { input ->
-                            val uppercaseIn = input.uppercase().trim()
-                            // GSTIN validation constraints (alphanumeric check)
-                            val hasNonAlphanumeric = uppercaseIn.any { !it.isLetterOrDigit() }
-                            gstinError = hasNonAlphanumeric || uppercaseIn.length > 15
-                            
-                            gstin = uppercaseIn
+                            val uppercaseInput = input.uppercase().trim().take(15)
+                            gstin = uppercaseInput
 
-                            // On typing, auto extract PAN String (indices 2 to 11, length 10)
-                            if (uppercaseIn.length >= 12) {
-                                val extractedPan = uppercaseIn.substring(2, 12)
+                            if (uppercaseInput.length >= 12) {
+                                val extractedPan = uppercaseInput.substring(2, 12)
                                 if (extractedPan.all { it.isLetterOrDigit() }) {
                                     pan = extractedPan
                                 }
                             }
 
-                            // Match State Code as typed
-                            if (uppercaseIn.length >= 2) {
-                                val possibleCode = uppercaseIn.substring(0, 2)
-                                val resolvedState = Utils.INDIAN_STATES.find { it.second == possibleCode }
-                                if (resolvedState != null) {
-                                    selectedStateInfo = resolvedState
+                            if (uppercaseInput.length >= 2) {
+                                resolveIndianStateInfo(uppercaseInput.substring(0, 2))?.let {
+                                    selectedStateInfo = it
+                                }
+                                Utils.INDIAN_STATES.find { it.second == uppercaseInput.substring(0, 2) }?.let {
+                                    selectedStateInfo = it
                                 }
                             }
 
-                            if (uppercaseIn.length == 15 && !hasNonAlphanumeric) {
-                                // Fetch trading / business name
+                            if (uppercaseInput.length == 15) {
                                 isGstinLoading = true
-                                viewModel.fetchGstinDetails(uppercaseIn) { trade, legal ->
+                                viewModel.fetchGstinDetails(uppercaseInput) { trade, legal ->
                                     isGstinLoading = false
                                     val detectedName = trade ?: legal
                                     if (detectedName != null && businessName.isBlank()) {
                                         businessName = detectedName
                                     }
                                 }
+                            } else {
+                                isGstinLoading = false
                             }
                         },
-                        label = "GSTIN (15-digit, Optional)",
+                        label = "GSTIN",
                         modifier = Modifier.weight(1.2f),
                         singleLine = true,
                         trailingIcon = {
                             if (isGstinLoading) {
-                                CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(20.dp),
+                                    strokeWidth = 2.dp
+                                )
                             }
-                        },
-                        isError = gstinError
+                        }
                     )
 
                     RetailTextField(
                         value = pan,
                         onValueChange = { pan = it.uppercase() },
-                        label = "PAN Number (Optional)",
+                        label = "PAN",
                         modifier = Modifier.weight(0.8f),
                         singleLine = true
                     )
@@ -379,7 +505,6 @@ fun SetupScreen(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // Bank Details
                 Text(
                     text = "Bank Details for Invoice Payments",
                     fontWeight = FontWeight.Bold,
@@ -390,23 +515,22 @@ fun SetupScreen(
                 RetailTextField(
                     value = accountNo,
                     onValueChange = { accountNo = it.filter(Char::isDigit) },
-                    label = "Account Number *",
+                    label = "Account Number",
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                 )
 
                 RetailTextField(
                     value = ifsc,
                     onValueChange = { input ->
-                        val uppercaseIn = input.uppercase().replace("\\s".toRegex(), "")
-                        if (uppercaseIn.length <= 11) {
-                            ifsc = uppercaseIn
+                        val uppercaseInput = input.uppercase().replace("\\s".toRegex(), "")
+                        if (uppercaseInput.length <= 11) {
+                            ifsc = uppercaseInput
                             ifscVerifiedMessage = ""
-                            if (uppercaseIn.length == 11) {
+                            if (uppercaseInput.length == 11) {
                                 isIfscLoading = true
-                                ifscError = false
-                                viewModel.fetchIfscDetails(uppercaseIn) { resolvedBank, resolvedBranch ->
+                                viewModel.fetchIfscDetails(uppercaseInput) { resolvedBank, resolvedBranch ->
                                     isIfscLoading = false
                                     if (!resolvedBank.isNullOrBlank()) {
                                         bankName = resolvedBank
@@ -419,28 +543,28 @@ fun SetupScreen(
                                                 append(resolvedBranch)
                                             }
                                         }
-                                    } else {
-                                        ifscError = true
                                     }
                                 }
                             }
                         }
                     },
-                    label = "IFSC Code *",
+                    label = "IFSC Code",
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
                     trailingIcon = {
                         if (isIfscLoading) {
-                            CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(20.dp),
+                                strokeWidth = 2.dp
+                            )
                         }
-                    },
-                    isError = ifscError
+                    }
                 )
 
                 if (ifscVerifiedMessage.isNotBlank()) {
                     Text(
                         text = ifscVerifiedMessage,
-                        color = Color(0xFF2E7D32),
+                        color = AppColors.primary,
                         fontSize = 12.sp
                     )
                 }
@@ -448,7 +572,7 @@ fun SetupScreen(
                 RetailTextField(
                     value = bankName,
                     onValueChange = { bankName = it },
-                    label = "Bank Name *",
+                    label = "Bank Name",
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true
                 )
@@ -461,32 +585,24 @@ fun SetupScreen(
                     singleLine = true
                 )
 
-                if (showError) {
+                if (missingFields.isNotEmpty()) {
                     Text(
-                        text = errorMessage,
-                        color = AppColors.error,
+                        text = "\u26A0 Pending: ${missingFields.joinToString(", ") { it.label }}",
+                        color = MaterialTheme.colorScheme.error,
                         fontSize = 13.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.padding(top = 4.dp)
+                        fontWeight = FontWeight.SemiBold
                     )
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Initialize Submit Button
                 Button(
                     onClick = {
-                        // Basic validation
-                        if (businessName.isBlank() || ownerName.isBlank() || address.isBlank() ||
-                            city.isBlank() || pin.isBlank() || phone.isBlank() || email.isBlank() ||
-                            bankName.isBlank() || accountNo.isBlank() || ifsc.isBlank()) {
-                            errorMessage = "Please fill in all fields marked with *"
-                            showError = true
-                        } else if (gstin.isNotBlank() && gstin.length != 15) {
-                            errorMessage = "GSTIN must be exactly 15 characters long if provided."
-                            showError = true
+                        submitAttempted = true
+                        val firstInvalidField = missingFields.firstOrNull()
+                        if (firstInvalidField != null) {
+                            focusFirstInvalidField(firstInvalidField)
                         } else {
-                            showError = false
                             askForSampleData = true
                         }
                     },
@@ -511,12 +627,23 @@ fun SetupScreen(
             containerColor = AppColors.cardBg,
             titleContentColor = AppColors.textPrimary,
             textContentColor = AppColors.textSecondary,
-            title = { Text("Explore with Sample Data?", fontWeight = FontWeight.Bold, color = AppColors.textPrimary) },
-            text = { Text("Would you like to load sample products, parties, and vouchers to instantly see how the charts, outstanding balances, and GST summary ledger reports operate?", color = AppColors.textSecondary) },
+            title = {
+                Text(
+                    "Explore with Sample Data?",
+                    fontWeight = FontWeight.Bold,
+                    color = AppColors.textPrimary
+                )
+            },
+            text = {
+                Text(
+                    "Would you like to load sample products, parties, and vouchers to instantly see how the charts, outstanding balances, and GST summary ledger reports operate?",
+                    color = AppColors.textSecondary
+                )
+            },
             confirmButton = {
                 Button(
                     onClick = {
-                        val profileObj = BusinessProfile(
+                        val profile = BusinessProfile(
                             businessName = businessName,
                             ownerName = ownerName,
                             address = address,
@@ -533,7 +660,7 @@ fun SetupScreen(
                             ifsc = ifsc,
                             branchName = bankBranch
                         )
-                        viewModel.saveProfile(profileObj) {
+                        viewModel.saveProfile(profile) {
                             viewModel.loadSampleData()
                             askForSampleData = false
                             onSetupComplete()
@@ -547,7 +674,7 @@ fun SetupScreen(
             dismissButton = {
                 TextButton(
                     onClick = {
-                        val profileObj = BusinessProfile(
+                        val profile = BusinessProfile(
                             businessName = businessName,
                             ownerName = ownerName,
                             address = address,
@@ -564,7 +691,7 @@ fun SetupScreen(
                             ifsc = ifsc,
                             branchName = bankBranch
                         )
-                        viewModel.saveProfile(profileObj) {
+                        viewModel.saveProfile(profile) {
                             askForSampleData = false
                             onSetupComplete()
                         }

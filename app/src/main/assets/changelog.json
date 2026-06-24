@@ -1,15 +1,28 @@
 {
-  "version": "2.2.1",
   "show_once": true,
-  "changes": [
-    "IMPROVED: Back gesture shows screen preview",
-    "IMPROVED: Voucher type list preserved on back",
-    "IMPROVED: Smooth slide animations on navigation",
-    "FIXED: Build warnings removed for clean build",
-    "FIXED: Deprecated APIs replaced with stable ones",
-    "FIXED: Unused imports and variables cleaned up",
-    "FIXED: Predictive back gesture support added",
-    "FIXED: Navigation back stack behaves correctly",
-    "PERFORMANCE: Cleaner build output, zero warnings"
+  "history": [
+    {
+      "version": "2.2.2",
+      "changes": [
+        "ADDED: Setup now blocks save only when Business Name, Address, or PIN Code is empty, with red field errors and automatic focus on the first missing field.",
+        "CONFIRMED: Phone Number, Email Address, GSTIN, PAN, and all bank details remain optional in both Setup and Settings.",
+        "ADDED: GST state code can now be auto-detected from device location during Setup, with manual detection available from Settings.",
+        "ADDED: A live English pending-fields summary now appears at the bottom of Setup and Business Profile editing whenever required fields are incomplete."
+      ]
+    },
+    {
+      "version": "2.2.1",
+      "changes": [
+        "IMPROVED: Back gesture shows screen preview.",
+        "IMPROVED: Voucher type list preserved on back.",
+        "IMPROVED: Smooth slide animations on navigation.",
+        "FIXED: Build warnings removed for clean build.",
+        "FIXED: Deprecated APIs replaced with stable ones.",
+        "FIXED: Unused imports and variables cleaned up.",
+        "FIXED: Predictive back gesture support added.",
+        "FIXED: Navigation back stack behaves correctly.",
+        "PERFORMANCE: Cleaner build output, zero warnings."
+      ]
+    }
   ]
 }

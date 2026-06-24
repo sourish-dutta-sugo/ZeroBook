@@ -74,6 +74,7 @@ import kotlinx.coroutines.withContext
 import java.util.Calendar
 import java.time.LocalDateTime
 import java.time.LocalTime
+import com.example.BuildConfig
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -114,6 +115,12 @@ fun SettingsScreen(
     }
 
     var activeSubMode by remember { mutableStateOf(if (isDesktop) "BUSINESS" else "MENU") }
+    var changelogData by remember { mutableStateOf<ChangelogData?>(null) }
+    var showChangelogDialog by remember { mutableStateOf(false) }
+
+    LaunchedEffect(context) {
+        changelogData = ChangelogLoader.load(context)
+    }
 
     val exportCsv: () -> Unit = {
         try {
@@ -138,6 +145,15 @@ fun SettingsScreen(
     @Composable
     fun DetailContent() {
         if (activeSubMode == "BUSINESS") {
+            BusinessProfileSettingsSection(
+                viewModel = viewModel,
+                profile = origProfile,
+                isDesktop = isDesktop,
+                onBackToMenu = { activeSubMode = "MENU" }
+            )
+            return
+        }
+        if (false && activeSubMode == "BUSINESS") {
             // Business Profile Form Editor
             val profile = origProfile ?: BusinessProfile(
                 businessName = "", ownerName = "", address = "", city = "", state = "West Bengal", stateCode = "19",
@@ -708,7 +724,7 @@ fun SettingsScreen(
                     color = AppColors.textSecondary
                 )
                 Text(
-                    text = "Version 1.0.0",
+                    text = "Version ${BuildConfig.VERSION_NAME}",
                     fontSize = 12.sp,
                     color = AppColors.textSecondary
                 )
@@ -717,6 +733,36 @@ fun SettingsScreen(
                     fontSize = 11.sp,
                     color = AppColors.textSecondary
                 )
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { showChangelogDialog = true },
+                    colors = CardDefaults.cardColors(containerColor = AppColors.cardBg),
+                    border = BorderStroke(1.dp, AppColors.border),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 14.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text("Change Log", fontWeight = FontWeight.SemiBold, color = AppColors.textPrimary)
+                            Text(
+                                "View the full release history",
+                                fontSize = 11.sp,
+                                color = AppColors.textSecondary
+                            )
+                        }
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                            contentDescription = null,
+                            tint = AppColors.textTertiary
+                        )
+                    }
+                }
                 Spacer(modifier = Modifier.height(16.dp))
             }
         }
@@ -1575,6 +1621,7 @@ fun SettingsScreen(
                             viewModel = viewModel,
                             activeSubMode = activeSubMode,
                             onSelect = { activeSubMode = it },
+                            openChangeLog = { showChangelogDialog = true },
                             exportCsv = exportCsv,
                             importCsv = importCsv,
                             context = context,
@@ -1609,6 +1656,7 @@ fun SettingsScreen(
                         viewModel = viewModel,
                         activeSubMode = activeSubMode,
                         onSelect = { activeSubMode = it },
+                        openChangeLog = { showChangelogDialog = true },
                         exportCsv = exportCsv,
                         importCsv = importCsv,
                         context = context,
@@ -1621,6 +1669,46 @@ fun SettingsScreen(
             DetailContent()
         }
     }
+
+    if (showChangelogDialog && changelogData != null) {
+        AlertDialog(
+            onDismissRequest = { showChangelogDialog = false },
+            confirmButton = {
+                Button(onClick = { showChangelogDialog = false }) {
+                    Text("Close")
+                }
+            },
+            title = {
+                Text("Change Log")
+            },
+            text = {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 420.dp)
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    changelogData?.history?.forEach { entry ->
+                        Text(
+                            text = "Version ${entry.version}",
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF111827)
+                        )
+                        entry.changes.forEach { change ->
+                            Text(
+                                text = "• $change",
+                                color = Color(0xFF111827)
+                            )
+                        }
+                    }
+                }
+            },
+            containerColor = Color.White,
+            textContentColor = Color(0xFF111827),
+            titleContentColor = Color(0xFF111827)
+        )
+    }
 }
 
 @Composable
@@ -1628,6 +1716,7 @@ fun SettingsMenuSection(
     viewModel: AppViewModel,
     activeSubMode: String,
     onSelect: (String) -> Unit,
+    openChangeLog: () -> Unit,
     exportCsv: () -> Unit,
     importCsv: () -> Unit,
     context: android.content.Context,
@@ -1685,6 +1774,13 @@ fun SettingsMenuSection(
             description = "Automate bills outstanding reminders to debtors",
             icon = Icons.Default.Email,
             onClick = { onSelect("EMAIL") }
+        )
+
+        SettingsMenuCard(
+            title = "Change Log",
+            description = "Read what changed in each ZeroBook release",
+            icon = Icons.Default.Info,
+            onClick = openChangeLog
         )
 
         SettingsMenuCard(

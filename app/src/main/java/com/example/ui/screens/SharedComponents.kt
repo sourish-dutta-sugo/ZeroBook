@@ -43,11 +43,7 @@ suspend fun fetchPinLookup(pinCode: String): PinLookupResult? = withContext(Disp
         val city = postOffice.optString("District").trim()
         val state = postOffice.optString("State").trim()
         if (city.isBlank() || state.isBlank()) return@runCatching null
-        val stateCode = Utils.INDIAN_STATES.firstOrNull {
-            it.first.equals(state, ignoreCase = true) ||
-                it.first.contains(state, ignoreCase = true) ||
-                state.contains(it.first, ignoreCase = true)
-        }?.second.orEmpty()
+        val stateCode = resolveIndianStateInfo(state)?.second.orEmpty()
         PinLookupResult(city = city, state = state, stateCode = stateCode)
     }.getOrNull()
 }
@@ -98,7 +94,8 @@ fun RetailTextField(
     trailingIcon: @Composable (() -> Unit)? = null,
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
     keyboardActions: KeyboardActions = KeyboardActions.Default,
-    isError: Boolean = false
+    isError: Boolean = false,
+    supportingText: @Composable (() -> Unit)? = null
 ) {
     OutlinedTextField(
         value = value,
@@ -123,6 +120,7 @@ fun RetailTextField(
         keyboardActions = keyboardActions,
         shape = RoundedCornerShape(8.dp),
         isError = isError,
+        supportingText = supportingText,
         colors = zeroBookInputColors()
     )
 }
