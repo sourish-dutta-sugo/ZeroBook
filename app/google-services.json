@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "658711462567",
+    "project_id": "zerobook-d2dc8",
+    "storage_bucket": "zerobook-d2dc8.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:658711462567:android:6909dd7333a9e6ae3a5182",
+        "android_client_info": {
+          "package_name": "com.aistudio.retailbook.acntgp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBRDrY51zSanBimkbMdHdP-TdgXqHrVKto"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

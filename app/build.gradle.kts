@@ -1,9 +1,10 @@
 plugins {
-  alias(libs.plugins.android.application)
   alias(libs.plugins.kotlin.compose)
   alias(libs.plugins.google.devtools.ksp)
   alias(libs.plugins.roborazzi)
   alias(libs.plugins.secrets)
+  id("com.android.application")
+  id("com.google.gms.google-services")
 }
 
 android {
@@ -85,6 +86,8 @@ secrets {
 // Some unused dependencies are commented out below instead of being removed.
 // This makes it easy to add them back in the future if needed.
 dependencies {
+  implementation(platform("com.google.firebase:firebase-bom:34.15.0"))
+  implementation("com.google.firebase:firebase-analytics")
   implementation(platform(libs.androidx.compose.bom))
   implementation(libs.accompanist.permissions)
   implementation(libs.androidx.activity.compose)
