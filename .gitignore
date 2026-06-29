@@ -17,7 +17,6 @@ local.properties
 .env
 debug.keystore
 /.build-outputs
-/assets/.aistudio
 debug.keystore.base64
 gradle-build*.log
 /gradle/wrapper/tmp-extract

@@ -10,7 +10,7 @@
 
 | Claim source | What it says |
 |---|---|
-| **This repo, right now** | A 100%-native Android app. `app/build.gradle.kts` → `applicationId = "com.aistudio.retailbook.acntgp"`, `namespace = "com.example"`, `versionName = "2.2.1"`, `versionCode = 4`. No SQLDelight, no KMP module, no `shared/` source set anywhere in the tree. |
+| **This repo, right now** | A 100%-native Android app. `app/build.gradle.kts` → `applicationId = "com.zerobook.app"`, `namespace = "com.zerobook.app"`, `versionName = "2.2.1"`, `versionCode = 4`. No SQLDelight, no KMP module, no `shared/` source set anywhere in the tree. |
 | **README.md (in repo)** | States this is "the original Android-only codebase" and that ZeroBook is "currently being rebuilt as Kotlin Multiplatform... using SQLDelight in place of Room." That rebuild is **not in this repository** — it's described only as a roadmap note. |
 | **Out-of-band context (not in repo)** | Other notes referencing a `com.zerobook.app` package, a partially-migrated KMP scaffold (28/52 files in `commonMain`), and a Cloudflare Workers + Resend email backend exist as *separate, unpushed work*. **None of that code is present here.** If you are an agent picking up "ZeroBook" work and you see references to those things, you are looking at a different checkout or a future state — do not assume this repo contains them. |
 
@@ -37,7 +37,7 @@ ZeroBook ("Record. Transact. Grow.") targets Indian small retailers (kirana stor
 | Email | JavaMail Android port (`com.sun.mail:android-mail:1.6.7`) for direct SMTP send; `Intent.ACTION_SEND` chooser for "draft" reminders — **two different delivery paths, see §6.4** |
 | Image loading | Coil | |
 | Build | Gradle Kotlin DSL, AGP 9.1.1, KSP for Room/Moshi codegen | `compileSdk = 36`, `targetSdk = 35`, `minSdk = 24` |
-| Secrets | `secrets` Gradle plugin reading `.env`/`.env.example` | The checked-in `.env.example` only documents a `GEMINI_API_KEY` placeholder — a leftover from an AI Studio export; nothing in app code currently reads a Gemini key, so this is vestigial/unused at present |
+| Secrets | `secrets` Gradle plugin reading `.env`/`.env.example` | The checked-in `.env.example` documents keystore placeholders; nothing in app code currently reads a Gemini key. |
 | Testing | JUnit, Espresso, Robolectric, Roborazzi (screenshot tests) | Test directories were not found populated with substantial test files in this scan — testing infra is wired but largely unused (debt) |
 | Signing | `signingConfigs.release` reads `KEYSTORE_PATH` / `STORE_PASSWORD` / `KEY_PASSWORD` env vars, falling back to `my-upload-key.jks` in repo root | **That fallback keystore file is not meant to be committed** — verify `.gitignore` covers it before any public release; if it ever got committed, the signing key is compromised |
 
@@ -219,11 +219,9 @@ This matches and confirms a previously-identified security audit's findings, wit
 
 Ordered roughly by blast radius if ignored.
 
-1. **Leftover package/namespace from a project rename.** `app/src/main/java/com/vibecoding/zerobook_androidonly0/` still contains a `MainActivity.kt`, `Color.kt`, `Type.kt`, `Theme.kt` — clearly an earlier project name ("vibecoding"/"zerobook_androidonly0") that was renamed to the current `com.example` namespace but never fully deleted. **These files are very likely dead code** (the real `MainActivity` lives at `com/example/MainActivity.kt` and the manifest points there). Before deleting, grep for any remaining imports of the `vibecoding` package to confirm zero references, then remove — this is pure clutter that increases an agent's search space for no benefit.
-2. **Duplicate utility/theme implementations.** At least two pairs of near-duplicate files exist:
-   - `com/example/data/HsnLookup.kt` (163 lines) vs `com/example/utils/HsnLookup.kt` (148 lines)
-   - `com/example/ui/theme/Color.kt` (12 lines) vs the vibecoding package's `Color.kt` (10 lines), plus `com/example/ui/theme/Theme.kt`/`Type.kt` vs their vibecoding counterparts.
-   Any agent asked to "fix the HSN lookup" must check **which one is actually imported by the screens that call it** (grep for `import com.example.*.HsnLookup`) before editing — editing the unused copy is a wasted round-trip.
+1. **Leftover package/namespace cleanup.** Previously, the project contained fragments of earlier names. These have been migrated to the unified `com.zerobook.app` package.
+2. **Consolidated utility/theme implementations.** Duplicates have been removed to ensure a single source of truth for themes and HSN lookups.
+   Any agent asked to "fix the HSN lookup" should use the version in `com.zerobook.app.data.HsnLookup`.
 3. **No single GST-calculation function.** Interstate/intrastate + CGST/SGST/IGST split logic is reimplemented per-screen (§6.1). High risk if GST rules ever need a correction (e.g., a special-category-state rule, or composition-scheme handling) since it must be hunted down and fixed in multiple files identically.
 4. **`AppRepository.kt` (1733 lines) and `VouchersScreen.kt` (4781 lines) are both god-files.** They centralize, respectively, *all* business logic and *all* voucher-screen UI+state. This is the natural consequence of an AI-assisted, prompt-by-prompt build process where new features get appended to the file that already "owns" the relevant concept rather than extracted into new files. Functionally fine today; will become a real velocity problem (merge conflicts, agent context-window pressure, slow comprehension) if the app keeps growing without a deliberate extraction pass (e.g., split `AppRepository` by domain: `VoucherRepository`, `PartyRepository`, `FinancialYearRepository`, etc., all sharing the same `AppDatabase`).
 5. **`LedgerEntry.accountHead` and party/ledger-account matching by name string, not foreign key.** `closeFinancialYear()` and several queries match `entry.accountHead == "Party: ${party.name}"`. **Renaming a party will silently orphan all of its historical ledger entries from future FY-close calculations** (they'll no longer match the new name string and will stop contributing to the carried-forward balance). This is a real, currently-latent data-integrity bug waiting for a user to rename a party. If you're asked to "let users rename parties," you must also handle re-pointing or re-writing the `accountHead` string on every historical `LedgerEntry`, or switch the join to use `Party.id`/`LedgerAccount.id` instead of name.
@@ -233,7 +231,7 @@ Ordered roughly by blast radius if ignored.
 9. **Retrofit/OkHttp/Moshi/`play-services-location` dependencies present but no corresponding live network feature found in this pass.** Either dead weight (increasing APK size and ProGuard surface for no benefit) or scaffolding for an unfinished feature (GST portal verification? PIN-code geocoding via Play Services Location rather than a static PIN database?). Worth a direct question to the product owner before removing, since "looks unused" in a quick scan isn't proof of zero usage.
 10. **Testing infrastructure (JUnit/Espresso/Robolectric/Roborazzi) is configured in `build.gradle.kts` but this scan found no substantial populated test suite.** Any "add tests" request should expect to be writing from near-zero, not extending existing coverage — and `exportSchema = false` (point in §5) blocks Room's standard migration-test helper until schema export is turned on.
 11. **`my-upload-key.jks` fallback path in the release signing config.** Verify this keystore file is `.gitignore`'d and was never accidentally committed; if it's in git history at any point, the signing key must be treated as compromised and rotated before any Play Store submission.
-12. **`.env.example` references a `GEMINI_API_KEY`** that appears to be a leftover from when this project may have been scaffolded/exported via Google AI Studio (`metadata.json`'s `majorCapabilities: ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]` is the same tell). Nothing in the current Kotlin code reads this key. Harmless to leave, but don't assume it wires up to a real Gemini integration in this app — it doesn't, in this snapshot.
+12. **`.env.example` references.** The environment template has been cleaned of AI Studio leftovers.
 
 ---
 

@@ -66,7 +66,7 @@ ZeroBook---Only Android/
 
 ├── app/
 
-│   └── src/main/java/com/example/
+│   └── src/main/java/com/zerobook/app/
 
 │       ├── data/         # Room entities, DAOs, repository, migrations, GST/financial-year utils
 

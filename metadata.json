@@ -2,5 +2,5 @@
   "name": "ZeroBook",
   "description": "ZeroBook: Record. Transact. Grow. Professional Retail Accounting & Invoicing system.",
   "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+  "majorCapabilities": []
 }
