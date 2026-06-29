@@ -67,6 +67,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.zerobook.app.data.HsnLookup
+import com.zerobook.app.data.HsnResult
 import com.zerobook.app.data.Product
 import com.zerobook.app.data.Utils
 import com.zerobook.app.data.filterDecimalInput
@@ -75,8 +77,6 @@ import com.zerobook.app.ui.animation.premiumCombinedClickable
 import com.zerobook.app.ui.animation.premiumFabEntrance
 import com.zerobook.app.ui.animation.pressScale
 import com.zerobook.app.ui.theme.AppColors
-import com.zerobook.app.utils.HsnEntry
-import com.zerobook.app.utils.HsnLookup
 import java.util.UUID
 
 enum class ProductSheetMode { ADD, EDIT }
@@ -432,7 +432,7 @@ fun ProductEditorScreen(
     var unitDropdownExpanded by remember { mutableStateOf(false) }
     var gstExpanded by remember { mutableStateOf(false) }
     var showBarcodeScanner by remember { mutableStateOf(false) }
-    var hsnResults by remember { mutableStateOf<List<HsnEntry>>(emptyList()) }
+    var hsnResults by remember { mutableStateOf<List<HsnResult>>(emptyList()) }
     var showHsnDialog by remember { mutableStateOf(false) }
 
     val units = listOf("PCS", "KG", "GM", "MG", "LTR", "ML", "BOX", "BAG", "NOS", "MTR")
@@ -471,12 +471,12 @@ fun ProductEditorScreen(
                             ) {
                                 TextButton(
                                     onClick = {
-                                        editorState = editorState.copy(hsnCode = result.code)
+                                        editorState = editorState.copy(hsnCode = result.hsnCode)
                                         showHsnDialog = false
                                     }
                                 ) {
                                     Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.Start) {
-                                        Text(result.code, fontWeight = FontWeight.Bold)
+                                        Text(result.hsnCode, fontWeight = FontWeight.Bold)
                                         Text(result.description, fontSize = 12.sp, color = AppColors.textSecondary)
                                     }
                                 }

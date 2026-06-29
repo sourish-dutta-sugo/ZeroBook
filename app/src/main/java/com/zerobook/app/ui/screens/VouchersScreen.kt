@@ -95,8 +95,8 @@ import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 import com.zerobook.app.utils.copyUriToInternalStorage
-import com.zerobook.app.utils.HsnEntry
-import com.zerobook.app.utils.HsnLookup
+import com.zerobook.app.data.HsnLookup
+import com.zerobook.app.data.HsnResult
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.launch
 import java.io.File
@@ -4094,7 +4094,7 @@ fun NewVoucherScreen(
     if (showQuickAddProductDialog) {
         var newProdName by remember(showQuickAddProductDialog) { mutableStateOf(quickAddInitialProductName) }
         var newProdHsn by remember { mutableStateOf("") }
-        var quickHsnSuggestions by remember { mutableStateOf<List<HsnEntry>>(emptyList()) }
+        var quickHsnSuggestions by remember { mutableStateOf<List<HsnResult>>(emptyList()) }
         var showQuickHsnDialog by remember { mutableStateOf(false) }
         var newProdUnit by remember { mutableStateOf("PCS") }
         var newProdSaleRate by remember { mutableStateOf("") }
@@ -4345,13 +4345,13 @@ fun NewVoucherScreen(
                             quickHsnSuggestions.forEach { result ->
                                 TextButton(
                                     onClick = {
-                                        newProdHsn = result.code
+                                        newProdHsn = result.hsnCode
                                         showQuickHsnDialog = false
                                     },
                                     modifier = Modifier.fillMaxWidth()
                                 ) {
                                     Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.Start) {
-                                        Text(result.code, fontWeight = FontWeight.Bold)
+                                        Text(result.hsnCode, fontWeight = FontWeight.Bold)
                                         Text(result.description, fontSize = 12.sp, color = AppColors.textSecondary)
                                     }
                                 }
