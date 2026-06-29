@@ -1,6 +1,7 @@
-package com.example.ui.screens
+package com.zerobook.app.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -12,15 +13,14 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.ui.animation.slideInFromBottom
-import com.example.ui.components.PremiumCategoryBadge
-import com.example.ui.components.PremiumElevatedCard
-import com.example.ui.components.formatIndianCurrency
-import com.example.ui.theme.AppColors
-import com.example.ui.theme.PremiumThemeConfig
+import com.zerobook.app.ui.animation.slideInFromBottom
+import com.zerobook.app.ui.components.*
+import com.zerobook.app.ui.theme.AppColors
+import com.zerobook.app.ui.theme.PremiumThemeConfig
 
 /**
  * Premium Parties (Customers/Suppliers) Screen
@@ -33,7 +33,7 @@ import com.example.ui.theme.PremiumThemeConfig
  * - Transaction history
  */
 
-data class Party(
+data class PremiumParty(
     val id: String,
     val name: String,
     val type: String, // "CUSTOMER" or "SUPPLIER"
@@ -45,8 +45,8 @@ data class Party(
 
 @Composable
 fun PartiesScreenPremium(
-    parties: List<Party> = emptyList(),
-    onPartyClick: (Party) -> Unit = {},
+    parties: List<PremiumParty> = emptyList(),
+    onPartyClick: (PremiumParty) -> Unit = {},
     onAddParty: () -> Unit = {}
 ) {
     var selectedType by remember { mutableStateOf<String?>(null) }
@@ -242,7 +242,7 @@ fun PartiesScreenPremium(
 
 @Composable
 fun PremiumPartyCard(
-    party: Party,
+    party: PremiumParty,
     onClick: () -> Unit = {}
 ) {
     var showMenu by remember { mutableStateOf(false) }
@@ -379,7 +379,7 @@ fun PremiumPartyCard(
 
 @Composable
 fun PremiumPartyDetailsSheet(
-    party: Party,
+    party: PremiumParty,
     onDismiss: () -> Unit,
     onCall: () -> Unit = {},
     onMessage: () -> Unit = {},
@@ -515,7 +515,7 @@ fun PremiumPartyDetailsSheet(
 
 @Composable
 fun PremiumContactRow(
-    icon: androidx.compose.material.icons.materialIcon,
+    icon: ImageVector,
     label: String,
     value: String,
     onClick: () -> Unit = {}
@@ -556,6 +556,3 @@ fun PremiumContactRow(
         }
     }
 }
-
-// Import for clickable
-import androidx.compose.foundation.clickable

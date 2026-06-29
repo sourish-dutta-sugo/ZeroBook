@@ -1,4 +1,4 @@
-package com.example.ui.components
+package com.zerobook.app.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -19,8 +19,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.ui.theme.AppColors
-import com.example.ui.theme.PremiumThemeConfig
+import com.zerobook.app.ui.theme.AppColors
+import com.zerobook.app.ui.theme.PremiumThemeConfig
 
 /**
  * Premium Neumorphic Components for Fintech Design
@@ -89,10 +89,11 @@ fun PremiumBalanceCard(
     subtitle: String? = null,
     icon: @Composable (() -> Unit)? = null,
     amountColor: Color = PremiumThemeConfig.Semantic.balanceNeutral,
-    onClick: (() -> Unit)? = null
+    onClick: (() -> Unit)? = null,
+    modifier: Modifier = Modifier
 ) {
     PremiumElevatedCard(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .padding(vertical = 8.dp),
         elevation = 3,

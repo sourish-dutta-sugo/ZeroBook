@@ -1,4 +1,4 @@
-package com.example.ui.animation
+package com.zerobook.app.ui.animation
 
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -30,7 +30,7 @@ fun AnimatedCounter(
     targetValue: Double,
     duration: Int = 1000,
     onValueChange: (Double) -> Unit = {}
-) {
+): Double {
     var displayValue by remember { mutableStateOf(0.0) }
     
     val animatedValue = animateFloatAsState(
@@ -96,10 +96,13 @@ fun Modifier.transactionAppearAnimation(
     val alpha by transition.animateFloat(
         initialValue = 0f,
         targetValue = 1f,
-        animationSpec = tween(
-            durationMillis = 600,
-            delayMillis = delayMillis,
-            easing = EaseOutCubic
+        animationSpec = infiniteRepeatable(
+            animation = tween(
+                durationMillis = 600,
+                delayMillis = delayMillis,
+                easing = EaseOutCubic
+            ),
+            repeatMode = RepeatMode.Restart
         ),
         label = "AlphaAnimation"
     )
@@ -107,10 +110,13 @@ fun Modifier.transactionAppearAnimation(
     val translateX by transition.animateFloat(
         initialValue = 20f,
         targetValue = 0f,
-        animationSpec = tween(
-            durationMillis = 600,
-            delayMillis = delayMillis,
-            easing = EaseOutCubic
+        animationSpec = infiniteRepeatable(
+            animation = tween(
+                durationMillis = 600,
+                delayMillis = delayMillis,
+                easing = EaseOutCubic
+            ),
+            repeatMode = RepeatMode.Restart
         ),
         label = "TranslateAnimation"
     )

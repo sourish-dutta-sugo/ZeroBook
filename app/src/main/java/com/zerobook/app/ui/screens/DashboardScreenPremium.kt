@@ -1,4 +1,4 @@
-package com.example.ui.screens
+package com.zerobook.app.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -17,21 +17,21 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.data.LedgerEntry
-import com.example.data.Voucher
-import com.example.ui.AppViewModel
-import com.example.ui.DashboardViewModel
-import com.example.ui.animation.floatingCardEffect
-import com.example.ui.animation.scaleAndFadeIn
-import com.example.ui.animation.slideInFromBottom
-import com.example.ui.components.PremiumBalanceCard
-import com.example.ui.components.PremiumElevatedCard
-import com.example.ui.components.PremiumKpiCard
-import com.example.ui.components.PremiumQuickActionButton
-import com.example.ui.components.PremiumTransactionCard
-import com.example.ui.components.formatIndianCurrency
-import com.example.ui.theme.AppColors
-import com.example.ui.theme.PremiumThemeConfig
+import com.zerobook.app.data.LedgerEntry
+import com.zerobook.app.data.Voucher
+import com.zerobook.app.ui.AppViewModel
+import com.zerobook.app.ui.DashboardViewModel
+import com.zerobook.app.ui.animation.floatingCardEffect
+import com.zerobook.app.ui.animation.scaleAndFadeIn
+import com.zerobook.app.ui.animation.slideInFromBottom
+import com.zerobook.app.ui.components.PremiumBalanceCard
+import com.zerobook.app.ui.components.PremiumElevatedCard
+import com.zerobook.app.ui.components.PremiumKpiCard
+import com.zerobook.app.ui.components.PremiumQuickActionButton
+import com.zerobook.app.ui.components.PremiumTransactionCard
+import com.zerobook.app.ui.components.formatIndianCurrency
+import com.zerobook.app.ui.theme.AppColors
+import com.zerobook.app.ui.theme.PremiumThemeConfig
 import java.text.SimpleDateFormat
 import java.util.*
 

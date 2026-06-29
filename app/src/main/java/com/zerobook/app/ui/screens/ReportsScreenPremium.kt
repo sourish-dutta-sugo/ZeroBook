@@ -1,4 +1,4 @@
-package com.example.ui.screens
+package com.zerobook.app.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -15,13 +15,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.data.Voucher
-import com.example.ui.animation.slideInFromBottom
-import com.example.ui.components.PremiumElevatedCard
-import com.example.ui.components.PremiumKpiCard
-import com.example.ui.components.formatIndianCurrency
-import com.example.ui.theme.AppColors
-import com.example.ui.theme.PremiumThemeConfig
+import androidx.compose.ui.graphics.vector.ImageVector
+import com.zerobook.app.data.Voucher
+import com.zerobook.app.ui.animation.slideInFromBottom
+import com.zerobook.app.ui.components.PremiumElevatedCard
+import com.zerobook.app.ui.components.PremiumKpiCard
+import com.zerobook.app.ui.components.formatIndianCurrency
+import com.zerobook.app.ui.theme.AppColors
+import com.zerobook.app.ui.theme.PremiumThemeConfig
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -388,7 +389,7 @@ fun PremiumBreakdownItem(
     label: String,
     count: Int,
     color: Color,
-    icon: androidx.compose.material.icons.materialIcon,
+    icon: ImageVector,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -520,7 +521,7 @@ fun PremiumExportOptionsCard(
 @Composable
 fun PremiumExportButton(
     label: String,
-    icon: androidx.compose.material.icons.materialIcon,
+    icon: ImageVector,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {

@@ -1,8 +1,9 @@
-package com.example.ui.screens
+package com.zerobook.app.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -17,14 +18,15 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.data.Voucher
-import com.example.ui.animation.slideInFromBottom
-import com.example.ui.components.PremiumCategoryBadge
-import com.example.ui.components.PremiumElevatedCard
-import com.example.ui.components.PremiumTransactionCard
-import com.example.ui.components.formatIndianCurrency
-import com.example.ui.theme.AppColors
-import com.example.ui.theme.PremiumThemeConfig
+import androidx.compose.ui.graphics.vector.ImageVector
+import com.zerobook.app.data.Voucher
+import com.zerobook.app.ui.animation.slideInFromBottom
+import com.zerobook.app.ui.components.PremiumCategoryBadge
+import com.zerobook.app.ui.components.PremiumElevatedCard
+import com.zerobook.app.ui.components.PremiumTransactionCard
+import com.zerobook.app.ui.components.formatIndianCurrency
+import com.zerobook.app.ui.theme.AppColors
+import com.zerobook.app.ui.theme.PremiumThemeConfig
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -357,7 +359,7 @@ fun PremiumTransactionListItem(
 fun PremiumEmptyState(
     title: String,
     message: String,
-    icon: androidx.compose.material.icons.materialIcon? = null,
+    icon: ImageVector? = null,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -407,7 +409,7 @@ fun PremiumEmptyState(
 // HELPER FUNCTIONS
 // ============================================================================
 
-fun getCategoryStyle(type: String): Pair<Color, androidx.compose.material.icons.materialIcon> {
+fun getCategoryStyle(type: String): Pair<Color, ImageVector> {
     return when (type) {
         "SALE" -> Pair(PremiumThemeConfig.Semantic.income, Icons.Default.TrendingUp)
         "PURCHASE" -> Pair(PremiumThemeConfig.Semantic.expense, Icons.Default.ShoppingCart)

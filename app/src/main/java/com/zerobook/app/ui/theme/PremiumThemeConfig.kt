@@ -1,4 +1,4 @@
-package com.example.ui.theme
+package com.zerobook.app.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
