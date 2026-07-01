@@ -709,7 +709,7 @@ fun SettingsScreen(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Image(
-                    painter = painterResource(R.drawable.zerobook_icon),
+                    painter = painterResource(R.drawable.logo_icon),
                     contentDescription = "ZeroBook",
                     modifier = Modifier.size(72.dp),
                     contentScale = ContentScale.Fit

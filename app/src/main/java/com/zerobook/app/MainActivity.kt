@@ -44,6 +44,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -81,6 +84,7 @@ import com.zerobook.app.ui.DashboardViewModel
 import com.zerobook.app.ui.animation.PremiumBottomNavContent
 import com.zerobook.app.ui.animation.premiumClickable
 import com.zerobook.app.ui.animation.premiumDialogEnter
+import com.zerobook.app.ui.animation.pressScale
 import com.zerobook.app.ui.animation.premiumDialogExit
 import com.zerobook.app.ui.animation.premiumEnterTransition
 import com.zerobook.app.ui.animation.premiumExitTransition
@@ -103,6 +107,7 @@ import com.zerobook.app.ui.theme.AppColors
 import com.zerobook.app.ui.theme.LocalAppTheme
 import com.zerobook.app.ui.theme.ZeroBookTheme
 import com.zerobook.app.ui.theme.ThemeViewModel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 private object Routes {
@@ -237,6 +242,7 @@ fun MainAppEntry(
                         )
                         Spacer(modifier = Modifier.height(24.dp))
                         Button(
+                            modifier = Modifier.pressScale(),
                             onClick = {
                                 if (context is android.app.Activity) {
                                     context.recreate()
@@ -272,9 +278,177 @@ private fun AppContent(
     val isSetupCompleted by viewModel.isSetupCompleted.collectAsState()
     var showSplash by remember { mutableStateOf(true) }
 
-    if (showSplash) {
-        SplashScreen(onTimeout = { showSplash = false })
-        return
+    Crossfade(targetState = showSplash, animationSpec = tween(durationMillis = 240, easing = FastOutSlowInEasing)) { isSplash ->
+        if (isSplash) {
+            SplashScreen(onTimeout = { showSplash = false })
+        } else {
+            val sharedPreferences = remember {
+                context.getSharedPreferences("zerobook_pref", Context.MODE_PRIVATE)
+            }
+            var pinRequired by remember {
+                mutableStateOf(sharedPreferences.getBoolean("pin_enabled", false))
+            }
+            var pinAuthed by remember { mutableStateOf(false) }
+            var changelogData by remember { mutableStateOf<ChangelogData?>(null) }
+            var showChangelog by remember { mutableStateOf(false) }
+            val uiScope = rememberCoroutineScope()
+
+            LaunchedEffect(isSetupCompleted, pinRequired, pinAuthed) {
+                if (isSetupCompleted && (!pinRequired || pinAuthed)) {
+                    viewModel.autoAdvanceFinancialYearIfNeeded(context)?.let { updatedFy ->
+                        Toast.makeText(context, "Financial year updated to FY $updatedFy", Toast.LENGTH_LONG).show()
+                    }
+                    val loadedChangelog = ChangelogLoader.load(context)
+                    val lastSeenVersion = AppPreferences.getLastSeenChangelogVersion(context)
+                    if (loadedChangelog != null && (lastSeenVersion == null || lastSeenVersion != loadedChangelog.version)) {
+                        changelogData = loadedChangelog
+                        showChangelog = true
+                    }
+                    pinRequired = sharedPreferences.getBoolean("pin_enabled", false)
+                }
+            }
+
+            when {
+                !isSetupCompleted -> {
+                    SetupScreen(
+                        viewModel = viewModel,
+                        onSetupComplete = {}
+                    )
+                }
+
+                pinRequired && !pinAuthed -> {
+                    PinLockScreen(
+                        correctPin = sharedPreferences.getString("lock_pin", "1234") ?: "1234",
+                        onAuthentic = { pinAuthed = true }
+                    )
+                }
+
+                else -> {
+                    val navController = rememberNavController()
+                    val navBackStackEntry by navController.currentBackStackEntryAsState()
+                    val currentDestination = navBackStackEntry?.destination
+                    val currentRoute = currentDestination?.route
+                    var navigationLocked by remember { mutableStateOf(false) }
+                    val isTopLevel = topLevelDestinations.any { destination ->
+                        currentDestination?.hierarchy?.any { it.route == destination.route } == true
+                    }
+
+                    Scaffold(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .statusBarsPadding()
+                            .navigationBarsPadding(),
+                        containerColor = AppColors.screenBg,
+                        bottomBar = {
+                            if (isTopLevel) {
+                                NavigationBar(
+                                    containerColor = AppColors.cardBg,
+                                    tonalElevation = 6.dp,
+                                    modifier = Modifier
+                                        .navigationBarsPadding()
+                                        .height(72.dp)
+                                ) {
+                                    topLevelDestinations.forEach { destination ->
+                                        val selected = currentDestination?.hierarchy?.any { it.route == destination.route } == true
+                                        NavigationBarItem(
+                                            selected = selected,
+                                            enabled = !navigationLocked,
+                                            onClick = {
+                                                if (navigationLocked || selected) return@NavigationBarItem
+                                                navigationLocked = true
+                                                navController.navigateToTopLevel(destination.route)
+                                                uiScope.launch {
+                                                    delay(220)
+                                                    navigationLocked = false
+                                                }
+                                            },
+                                            icon = {
+                                                PremiumBottomNavContent(
+                                                    selected = selected,
+                                                    icon = destination.icon,
+                                                    label = destination.label
+                                                )
+                                            },
+                                            label = {},
+                                            colors = NavigationBarItemDefaults.colors(
+                                                selectedIconColor = AppColors.primary,
+                                                unselectedIconColor = AppColors.textTertiary,
+                                                selectedTextColor = AppColors.primary,
+                                                unselectedTextColor = AppColors.textTertiary,
+                                                indicatorColor = AppColors.primary.copy(alpha = 0.12f)
+                                            )
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    ) { innerPadding ->
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(innerPadding)
+                        ) {
+                            ZeroBookNavHost(
+                                navController = navController,
+                                viewModel = viewModel,
+                                themeViewModel = themeViewModel,
+                                dashboardViewModel = dashboardViewModel
+                            )
+                        }
+                    }
+
+                    if (showChangelog && changelogData != null) {
+                        val configuration = LocalConfiguration.current
+                        androidx.compose.animation.AnimatedVisibility(
+                            visible = showChangelog,
+                            enter = premiumDialogEnter(),
+                            exit = premiumDialogExit()
+                        ) {
+                            androidx.compose.material3.AlertDialog(
+                                onDismissRequest = {},
+                                confirmButton = {
+                                    Button(
+                                        modifier = Modifier.pressScale(),
+                                        onClick = {
+                                            val version = changelogData?.version.orEmpty()
+                                            if (version.isNotBlank()) {
+                                                uiScope.launch {
+                                                    AppPreferences.setLastSeenChangelogVersion(context, version)
+                                                    showChangelog = false
+                                                }
+                                            } else {
+                                                showChangelog = false
+                                            }
+                                        }
+                                    ) {
+                                        Text("Got it")
+                                    }
+                                },
+                                title = {
+                                    Text("What's New in ZeroBook ${changelogData?.version.orEmpty()}")
+                                },
+                                text = {
+                                    Column(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .heightIn(max = configuration.screenHeightDp.dp * 0.6f)
+                                            .verticalScroll(rememberScrollState()),
+                                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                                    ) {
+                                        changelogData?.changes?.forEach { change ->
+                                            Text("• $change", color = Color(0xFF111827))
+                                        }
+                                    }
+                                },
+                                containerColor = Color.White,
+                                textContentColor = Color(0xFF111827),
+                                titleContentColor = Color(0xFF111827)
+                            )
+                        }
+                    }
+                }
+            }
+        }
     }
 
     val sharedPreferences = remember {
@@ -323,6 +497,7 @@ private fun AppContent(
             val navBackStackEntry by navController.currentBackStackEntryAsState()
             val currentDestination = navBackStackEntry?.destination
             val currentRoute = currentDestination?.route
+            var navigationLocked by remember { mutableStateOf(false) }
             val isTopLevel = topLevelDestinations.any { destination ->
                 currentDestination?.hierarchy?.any { it.route == destination.route } == true
             }
@@ -346,7 +521,16 @@ private fun AppContent(
                                 val selected = currentDestination?.hierarchy?.any { it.route == destination.route } == true
                                 NavigationBarItem(
                                     selected = selected,
-                                    onClick = { navController.navigateToTopLevel(destination.route) },
+                                    enabled = !navigationLocked,
+                                    onClick = {
+                                        if (navigationLocked || selected) return@NavigationBarItem
+                                        navigationLocked = true
+                                        navController.navigateToTopLevel(destination.route)
+                                        uiScope.launch {
+                                            delay(220)
+                                            navigationLocked = false
+                                        }
+                                    },
                                     icon = {
                                         PremiumBottomNavContent(
                                             selected = selected,

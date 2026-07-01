@@ -10,13 +10,13 @@
     <style name="Theme.ZeroBook.Splash"
         parent="Theme.SplashScreen">
         <item name="windowSplashScreenBackground">
-            #0D1B2A
+            #FAF8F5
         </item>
         <item name="windowSplashScreenAnimatedIcon">
-            @drawable/zerobook_icon
+            @null
         </item>
         <item name="windowSplashScreenIconBackgroundColor">
-            #0D1B2A
+            #FAF8F5
         </item>
         <item name="postSplashScreenTheme">
             @style/Theme.ZeroBook

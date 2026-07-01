@@ -1,15 +1,16 @@
 package com.zerobook.app.ui.animation
 
 import androidx.compose.animation.AnimatedContentTransitionScope
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.ContentTransform
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.animateIntOffsetAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
+import kotlin.math.roundToInt
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
@@ -43,88 +44,92 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-private const val PressedScale = 0.96f
-private const val SelectedNavScale = 1.06f
+private const val PressedScale = 0.965f
+private const val PressedOffsetDp = 1f
+private const val SelectedNavScale = 1.04f
+
+private data class PremiumMotionPrefs(
+    val reducedMotion: Boolean = false,
+    val durationScale: Float = 1f
+)
+
+@Composable
+private fun rememberPremiumMotionPrefs(): PremiumMotionPrefs {
+    val configuration = LocalConfiguration.current
+    val density = LocalDensity.current
+    val isCompact = configuration.screenWidthDp <= 360 || configuration.screenHeightDp <= 640
+    val isLowDensity = density.density < 2.1f
+
+    return remember(configuration.screenWidthDp, configuration.screenHeightDp, density.density) {
+        PremiumMotionPrefs(
+            reducedMotion = isCompact || isLowDensity,
+            durationScale = if (isCompact || isLowDensity) 0.88f else 1f
+        )
+    }
+}
+
+private fun premiumDuration(baseDuration: Int, prefs: PremiumMotionPrefs): Int =
+    (baseDuration * prefs.durationScale).roundToInt().coerceAtLeast(if (prefs.reducedMotion) 140 else 180)
 
 val PremiumSpringSpec = spring<Float>(
-    dampingRatio = 0.76f,
-    stiffness = 430f
+    dampingRatio = 0.8f,
+    stiffness = 320f
 )
 
 val PremiumNavSpringSpec = spring<Float>(
-    dampingRatio = 0.78f,
-    stiffness = 380f
+    dampingRatio = 0.82f,
+    stiffness = 300f
 )
 
 val PremiumFadeSpec = tween<Float>(
-    durationMillis = 240,
+    durationMillis = 220,
     easing = FastOutSlowInEasing
 )
 
 val PremiumOffsetSpringSpec = spring<IntOffset>(
-    dampingRatio = 0.8f,
-    stiffness = 420f
+    dampingRatio = 0.84f,
+    stiffness = 360f
 )
 
 fun premiumScreenTransition(
     navigatingBack: Boolean
 ): AnimatedContentTransitionScope<*>.() -> ContentTransform = {
-    val enterOffset: (Int) -> Int = { fullWidth ->
-        if (navigatingBack) -(fullWidth / 4) else fullWidth
-    }
-    val exitOffset: (Int) -> Int = { fullWidth ->
-        if (navigatingBack) fullWidth else -(fullWidth / 4)
-    }
+    val enterOffset: (Int) -> Int = { fullWidth -> if (navigatingBack) -(fullWidth / 10) else fullWidth / 10 }
+    val exitOffset: (Int) -> Int = { fullWidth -> if (navigatingBack) fullWidth / 10 else -(fullWidth / 10) }
 
     (
         slideInHorizontally(
-            animationSpec = PremiumOffsetSpringSpec,
+            animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing),
             initialOffsetX = enterOffset
         ) +
-            fadeIn(animationSpec = PremiumFadeSpec, initialAlpha = 0.42f) +
-            scaleIn(
-                animationSpec = PremiumSpringSpec,
-                initialScale = if (navigatingBack) 1.02f else 0.96f
-            )
+            fadeIn(animationSpec = tween(durationMillis = 160, easing = FastOutSlowInEasing), initialAlpha = 0f)
         ) togetherWith (
         slideOutHorizontally(
-            animationSpec = PremiumOffsetSpringSpec,
+            animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing),
             targetOffsetX = exitOffset
         ) +
-            fadeOut(animationSpec = PremiumFadeSpec, targetAlpha = 0.74f) +
-            scaleOut(
-                animationSpec = PremiumSpringSpec,
-                targetScale = if (navigatingBack) 0.96f else 0.985f
-            )
+            fadeOut(animationSpec = tween(durationMillis = 160, easing = FastOutSlowInEasing), targetAlpha = 1f)
         )
 }
 
 fun premiumEnterTransition(navigatingBack: Boolean): AnimatedContentTransitionScope<*>.() -> EnterTransition = {
     slideInHorizontally(
-        animationSpec = PremiumOffsetSpringSpec,
+        animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing),
         initialOffsetX = { fullWidth ->
-            if (navigatingBack) -(fullWidth / 4) else fullWidth
+            if (navigatingBack) -(fullWidth / 10) else fullWidth / 10
         }
     ) +
-        fadeIn(animationSpec = PremiumFadeSpec, initialAlpha = 0.42f) +
-        scaleIn(
-            animationSpec = PremiumSpringSpec,
-            initialScale = if (navigatingBack) 1.02f else 0.96f
-        )
+        fadeIn(animationSpec = tween(durationMillis = 160, easing = FastOutSlowInEasing), initialAlpha = 0f)
 }
 
 fun premiumExitTransition(navigatingBack: Boolean): AnimatedContentTransitionScope<*>.() -> ExitTransition = {
     slideOutHorizontally(
-        animationSpec = PremiumOffsetSpringSpec,
+        animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing),
         targetOffsetX = { fullWidth ->
-            if (navigatingBack) fullWidth else -(fullWidth / 4)
+            if (navigatingBack) fullWidth / 10 else -(fullWidth / 10)
         }
     ) +
-        fadeOut(animationSpec = PremiumFadeSpec, targetAlpha = 0.74f) +
-        scaleOut(
-            animationSpec = PremiumSpringSpec,
-            targetScale = if (navigatingBack) 0.96f else 0.985f
-        )
+        fadeOut(animationSpec = tween(durationMillis = 160, easing = FastOutSlowInEasing), targetAlpha = 1f)
 }
 
 @Composable
@@ -132,15 +137,29 @@ fun Modifier.pressScale(
     enabled: Boolean = true,
     interactionSource: MutableInteractionSource = remember { MutableInteractionSource() }
 ): Modifier {
+    val prefs = rememberPremiumMotionPrefs()
     val isPressed by interactionSource.collectIsPressedAsState()
     val scale by animateFloatAsState(
         targetValue = if (enabled && isPressed) PressedScale else 1f,
-        animationSpec = PremiumSpringSpec,
+        animationSpec = spring(
+            dampingRatio = if (prefs.reducedMotion) 0.82f else 0.8f,
+            stiffness = if (prefs.reducedMotion) 280f else 320f
+        ),
         label = "premium_press_scale"
     )
+    val offset by animateFloatAsState(
+        targetValue = if (enabled && isPressed) 1f else 0f,
+        animationSpec = spring(
+            dampingRatio = if (prefs.reducedMotion) 0.82f else 0.8f,
+            stiffness = if (prefs.reducedMotion) 280f else 320f
+        ),
+        label = "premium_press_offset"
+    )
+    val density = LocalDensity.current
     return graphicsLayer {
         scaleX = scale
         scaleY = scale
+        translationY = if (enabled && isPressed) with(density) { PressedOffsetDp.dp.toPx() * offset } else 0f
     }
 }
 
@@ -191,23 +210,18 @@ fun PremiumBottomNavContent(
 ) {
     val scale by animateFloatAsState(
         targetValue = if (selected) SelectedNavScale else 1f,
-        animationSpec = PremiumNavSpringSpec,
+        animationSpec = tween(durationMillis = 140, easing = FastOutSlowInEasing),
         label = "bottom_nav_scale"
     )
     val labelAlpha by animateFloatAsState(
         targetValue = if (selected) 1f else 0.72f,
-        animationSpec = PremiumFadeSpec,
+        animationSpec = tween(durationMillis = 120, easing = FastOutSlowInEasing),
         label = "bottom_nav_alpha"
     )
     val iconAlpha by animateFloatAsState(
         targetValue = if (selected) 1f else 0.78f,
-        animationSpec = PremiumFadeSpec,
+        animationSpec = tween(durationMillis = 120, easing = FastOutSlowInEasing),
         label = "bottom_nav_icon_alpha"
-    )
-    val contentOffset by animateIntOffsetAsState(
-        targetValue = if (selected) IntOffset(0, -2) else IntOffset.Zero,
-        animationSpec = PremiumOffsetSpringSpec,
-        label = "bottom_nav_offset"
     )
 
     Row(
@@ -221,8 +235,6 @@ fun PremiumBottomNavContent(
     ) {
         Box(
             modifier = Modifier.graphicsLayer {
-                translationX = contentOffset.x.toFloat()
-                translationY = contentOffset.y.toFloat()
                 alpha = iconAlpha
             }
         ) {
@@ -232,7 +244,7 @@ fun PremiumBottomNavContent(
                 modifier = Modifier.size(20.dp)
             )
         }
-        AnimatedVisibility(visible = selected) {
+        if (selected) {
             Text(
                 text = label,
                 modifier = Modifier.alpha(labelAlpha),
@@ -247,8 +259,8 @@ fun premiumDialogEnter(): EnterTransition =
         animationSpec = PremiumOffsetSpringSpec,
         initialOffsetY = { it / 6 }
     ) +
-        fadeIn(animationSpec = PremiumFadeSpec, initialAlpha = 0.35f) +
-        scaleIn(animationSpec = PremiumSpringSpec, initialScale = 0.92f)
+        fadeIn(animationSpec = PremiumFadeSpec, initialAlpha = 0.3f) +
+        scaleIn(animationSpec = PremiumSpringSpec, initialScale = 0.96f)
 
 fun premiumDialogExit(): ExitTransition =
     slideOutVertically(
@@ -256,7 +268,7 @@ fun premiumDialogExit(): ExitTransition =
         targetOffsetY = { it / 8 }
     ) +
         fadeOut(animationSpec = PremiumFadeSpec) +
-        scaleOut(animationSpec = PremiumSpringSpec, targetScale = 0.96f)
+        scaleOut(animationSpec = PremiumSpringSpec, targetScale = 0.985f)
 
 @Composable
 fun Modifier.premiumFabEntrance(visible: Boolean = true): Modifier {
