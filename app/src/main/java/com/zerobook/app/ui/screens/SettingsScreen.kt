@@ -941,7 +941,8 @@ fun SettingsScreen(
             }
         }
     } else if (activeSubMode == "EMAIL") {
-        val sp = context.getSharedPreferences("zerobook_pref", Context.MODE_PRIVATE)
+        EmailAutomationSection(viewModel = viewModel)
+        /*
         var automationEnabled by remember { mutableStateOf(sp.getBoolean("email_automation_enabled", false)) }
         var triggerTimeText by remember { mutableStateOf(sp.getString("email_trigger_time", "09:00 AM") ?: "09:00 AM") }
         var scheduledAt by remember { mutableStateOf(EmailReminderScheduler.loadScheduledAt(context)) }
@@ -1604,6 +1605,7 @@ fun SettingsScreen(
                 }
             }
         }
+        */
     }
 }
 
@@ -1769,13 +1771,6 @@ fun SettingsMenuSection(
             description = "Configure custom financial year with auto-save and validations",
             icon = Icons.Default.DateRange,
             onClick = { onSelect("FY") }
-        )
-
-        SettingsMenuCard(
-            title = "Email Automation Control",
-            description = "Automate bills outstanding reminders to debtors",
-            icon = Icons.Default.Email,
-            onClick = { onSelect("EMAIL") }
         )
 
         SettingsMenuCard(

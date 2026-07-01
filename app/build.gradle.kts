@@ -56,6 +56,9 @@ android {
     compose = true
     buildConfig = true
   }
+  defaultConfig {
+    buildConfigField("String", "GOOGLE_CLIENT_ID", "\"410477764687-qk981vbhhhhia5nc06utcc5m5iag6rmk.apps.googleusercontent.com\"")
+  }
   packaging {
     resources {
       excludes += setOf(
@@ -123,6 +126,8 @@ dependencies {
   implementation(libs.play.services.location)
   implementation("com.sun.mail:android-mail:1.6.7")
   implementation("com.sun.mail:android-activation:1.6.7")
+  implementation("com.google.android.gms:play-services-auth:21.3.0")
+  implementation("androidx.security:security-crypto:1.1.0-alpha06")
   testImplementation(libs.androidx.compose.ui.test.junit4)
   testImplementation(libs.androidx.core)
   testImplementation(libs.androidx.junit)

@@ -23,9 +23,12 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         LedgerAccountFinancialYearBalance::class,
         BillReceivable::class,
         FinancialYearAuditLog::class,
-        Expense::class
+        Expense::class,
+        EmailAccount::class,
+        EmailAutomationRule::class,
+        EmailHistory::class
     ],
-    version = 13,
+    version = 14,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -45,6 +48,9 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun billReceivableDao(): BillReceivableDao
     abstract fun financialYearAuditLogDao(): FinancialYearAuditLogDao
     abstract fun expenseDao(): ExpenseDao
+    abstract fun emailAccountDao(): EmailAccountDao
+    abstract fun emailAutomationRuleDao(): EmailAutomationRuleDao
+    abstract fun emailHistoryDao(): EmailHistoryDao
 
     companion object {
         @Volatile
@@ -57,7 +63,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "ZeroBook.db"
                 )
-                .addMigrations(MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13)
+                .addMigrations(MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14)
                 .addCallback(object : RoomDatabase.Callback() {
                     override fun onCreate(db: SupportSQLiteDatabase) {
                         super.onCreate(db)
@@ -68,6 +74,7 @@ abstract class AppDatabase : RoomDatabase() {
                         ensureFinancialYearColumnsAndIndexes(db)
                         ensureReminderScheduleTable(db)
                         ensureExpenseTable(db)
+                        ensureEmailAutomationTables(db)
                     }
 
                     override fun onOpen(db: SupportSQLiteDatabase) {
@@ -79,6 +86,7 @@ abstract class AppDatabase : RoomDatabase() {
                         ensureFinancialYearColumnsAndIndexes(db)
                         ensureReminderScheduleTable(db)
                         ensureExpenseTable(db)
+                        ensureEmailAutomationTables(db)
                     }
                 })
                 .build()

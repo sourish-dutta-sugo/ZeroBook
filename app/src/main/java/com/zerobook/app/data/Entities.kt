@@ -359,3 +359,46 @@ data class Expense(
     val fyLabel: String = FinancialYearUtils.currentFinancialYearCode(),
     val createdAt: Long = System.currentTimeMillis()
 )
+
+@Entity(tableName = "email_accounts")
+data class EmailAccount(
+    @PrimaryKey val accountId: String,
+    val gmailAddress: String,
+    val oauthStatus: String = "ACTIVE",
+    val tokenReference: String = "",
+    val createdAt: Long = System.currentTimeMillis()
+)
+
+@Entity(tableName = "email_automation_rules")
+data class EmailAutomationRule(
+    @PrimaryKey val id: String,
+    val customerId: String,
+    val customerName: String,
+    val customerEmail: String,
+    val schedule: String = "09:00",
+    val frequency: String = "DAILY",
+    val template: String = "",
+    val enabled: Boolean = true,
+    val subject: String = "",
+    val sendMode: String = "IMMEDIATELY",
+    val sendHour: Int = 9,
+    val sendMinute: Int = 0,
+    val sendAmPm: String = "AM",
+    val dueAmount: Double = 0.0,
+    val dueDateLabel: String = "",
+    val invoiceReference: String = "",
+    val transactionReference: String = "",
+    val createdAt: Long = System.currentTimeMillis()
+)
+
+@Entity(tableName = "email_history")
+data class EmailHistory(
+    @PrimaryKey val id: String,
+    val recipient: String,
+    val subject: String,
+    val timestamp: Long,
+    val status: String,
+    val attachment: String? = null,
+    val details: String = "",
+    val createdAt: Long = System.currentTimeMillis()
+)

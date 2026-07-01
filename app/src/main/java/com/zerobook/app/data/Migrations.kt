@@ -180,6 +180,58 @@ fun ensureExpenseTable(db: SupportSQLiteDatabase) {
     )
 }
 
+fun ensureEmailAutomationTables(db: SupportSQLiteDatabase) {
+    db.execSQL(
+        """
+        CREATE TABLE IF NOT EXISTS email_accounts (
+            accountId TEXT NOT NULL PRIMARY KEY,
+            gmailAddress TEXT NOT NULL,
+            oauthStatus TEXT NOT NULL DEFAULT 'ACTIVE',
+            tokenReference TEXT NOT NULL DEFAULT '',
+            createdAt INTEGER NOT NULL DEFAULT 0
+        )
+        """.trimIndent()
+    )
+    db.execSQL(
+        """
+        CREATE TABLE IF NOT EXISTS email_automation_rules (
+            id TEXT NOT NULL PRIMARY KEY,
+            customerId TEXT NOT NULL,
+            customerName TEXT NOT NULL,
+            customerEmail TEXT NOT NULL,
+            schedule TEXT NOT NULL DEFAULT '09:00',
+            frequency TEXT NOT NULL DEFAULT 'DAILY',
+            template TEXT NOT NULL DEFAULT '',
+            enabled INTEGER NOT NULL DEFAULT 1,
+            subject TEXT NOT NULL DEFAULT '',
+            sendMode TEXT NOT NULL DEFAULT 'IMMEDIATELY',
+            sendHour INTEGER NOT NULL DEFAULT 9,
+            sendMinute INTEGER NOT NULL DEFAULT 0,
+            sendAmPm TEXT NOT NULL DEFAULT 'AM',
+            dueAmount REAL NOT NULL DEFAULT 0,
+            dueDateLabel TEXT NOT NULL DEFAULT '',
+            invoiceReference TEXT NOT NULL DEFAULT '',
+            transactionReference TEXT NOT NULL DEFAULT '',
+            createdAt INTEGER NOT NULL DEFAULT 0
+        )
+        """.trimIndent()
+    )
+    db.execSQL(
+        """
+        CREATE TABLE IF NOT EXISTS email_history (
+            id TEXT NOT NULL PRIMARY KEY,
+            recipient TEXT NOT NULL,
+            subject TEXT NOT NULL,
+            timestamp INTEGER NOT NULL,
+            status TEXT NOT NULL,
+            attachment TEXT,
+            details TEXT NOT NULL DEFAULT '',
+            createdAt INTEGER NOT NULL DEFAULT 0
+        )
+        """.trimIndent()
+    )
+}
+
 fun ensureFinancialYearColumnsAndIndexes(db: SupportSQLiteDatabase) {
     val currentFinancialYear = FinancialYearUtils.currentFinancialYearCode(ZoneId.systemDefault())
 
@@ -563,5 +615,18 @@ val MIGRATION_12_13 = object : Migration(12, 13) {
         ensureFinancialYearColumnsAndIndexes(db)
         ensureReminderScheduleTable(db)
         ensureExpenseTable(db)
+    }
+}
+
+val MIGRATION_13_14 = object : Migration(13, 14) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        ensureVoucherExtensionColumns(db)
+        ensureBusinessProfileExtensionColumns(db)
+        ensurePartyExtensionColumns(db)
+        ensureProductExtensionColumns(db)
+        ensureFinancialYearColumnsAndIndexes(db)
+        ensureReminderScheduleTable(db)
+        ensureExpenseTable(db)
+        ensureEmailAutomationTables(db)
     }
 }

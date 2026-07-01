@@ -326,3 +326,39 @@ interface ExpenseDao {
     @Query("DELETE FROM expenses WHERE id = :id")
     suspend fun deleteExpense(id: String)
 }
+
+@Dao
+interface EmailAccountDao {
+    @Query("SELECT * FROM email_accounts ORDER BY createdAt DESC LIMIT 1")
+    suspend fun getPrimaryAccountSync(): EmailAccount?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertAccount(account: EmailAccount)
+
+    @Query("DELETE FROM email_accounts WHERE accountId = :accountId")
+    suspend fun deleteAccount(accountId: String)
+}
+
+@Dao
+interface EmailAutomationRuleDao {
+    @Query("SELECT * FROM email_automation_rules ORDER BY createdAt DESC")
+    suspend fun getAllRulesSync(): List<EmailAutomationRule>
+
+    @Query("SELECT * FROM email_automation_rules WHERE customerId = :customerId LIMIT 1")
+    suspend fun getRuleForCustomer(customerId: String): EmailAutomationRule?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertRule(rule: EmailAutomationRule)
+
+    @Query("DELETE FROM email_automation_rules WHERE id = :id")
+    suspend fun deleteRule(id: String)
+}
+
+@Dao
+interface EmailHistoryDao {
+    @Query("SELECT * FROM email_history ORDER BY createdAt DESC LIMIT :limit")
+    suspend fun getHistorySync(limit: Int): List<EmailHistory>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertHistory(entry: EmailHistory)
+}
