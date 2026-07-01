@@ -155,6 +155,12 @@ fun SettingsScreen(
             )
             return
         }
+        if (activeSubMode == "CUSTOMIZE") {
+            ProgressTrackerSettingsScreen(
+                onBackToMenu = { activeSubMode = "MENU" }
+            )
+            return
+        }
         if (false && activeSubMode == "BUSINESS") {
             // Business Profile Form Editor
             val profile = origProfile ?: BusinessProfile(
@@ -1760,6 +1766,13 @@ fun SettingsMenuSection(
                         )
 
         SettingsMenuCard(
+            title = "Customize",
+            description = "Enable progress tracker and future customization controls",
+            icon = Icons.Default.CheckCircle,
+            onClick = { onSelect("CUSTOMIZE") }
+        )
+
+        SettingsMenuCard(
             title = "Theme & Colors",
             description = "Switch between Beach, Blue, Green, Purple, and Dark",
             icon = Icons.Default.CheckCircle,
@@ -1852,6 +1865,120 @@ fun SettingsMenuSection(
                     ) {
                         Text("Backup Database", fontSize = 11.sp)
                     }
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ProgressTrackerSettingsScreen(onBackToMenu: () -> Unit) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var enabled by remember { mutableStateOf(false) }
+    var metric by remember { mutableStateOf("Sales") }
+    var period by remember { mutableStateOf("Monthly") }
+    var target by remember { mutableStateOf("200000") }
+
+    LaunchedEffect(Unit) {
+        enabled = AppPreferences.isProgressTrackerEnabled(context)
+        metric = AppPreferences.getProgressTrackerMetric(context)
+        period = AppPreferences.getProgressTrackerPeriod(context)
+        target = AppPreferences.getProgressTrackerTarget(context)
+    }
+
+    Scaffold(
+        containerColor = AppColors.screenBg,
+        topBar = {
+            TopAppBar(
+                title = { Text("Customize", fontWeight = FontWeight.Bold, color = AppColors.textPrimary) },
+                navigationIcon = {
+                    IconButton(onClick = onBackToMenu) {
+                        Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = AppColors.textPrimary)
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = AppColors.cardBg)
+            )
+        }
+    ) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(AppColors.screenBg)
+                .verticalScroll(rememberScrollState())
+                .padding(innerPadding)
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Card(
+                modifier = Modifier.fillMaxWidth().border(1.dp, AppColors.border, RoundedCornerShape(16.dp)),
+                colors = CardDefaults.cardColors(containerColor = AppColors.cardBg)
+            ) {
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text("Progress Tracker", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = AppColors.textPrimary)
+                    Text("Enable a compact progress tracker on the dashboard and keep it connected to live accounting data.", fontSize = 12.sp, color = AppColors.textSecondary)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("Enable / Disable", fontWeight = FontWeight.Medium, color = AppColors.textPrimary)
+                        Switch(
+                            checked = enabled,
+                            onCheckedChange = {
+                                enabled = it
+                                scope.launch { AppPreferences.setProgressTrackerEnabled(context, it) }
+                            }
+                        )
+                    }
+                    OutlinedTextField(
+                        value = metric,
+                        onValueChange = { metric = it },
+                        label = { Text("Metric") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
+                    )
+                    OutlinedTextField(
+                        value = period,
+                        onValueChange = { period = it },
+                        label = { Text("Time") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
+                    )
+                    OutlinedTextField(
+                        value = target,
+                        onValueChange = { target = it.filter(Char::isDigit) },
+                        label = { Text("Target Amount") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                    )
+                    Button(
+                        onClick = {
+                            scope.launch {
+                                AppPreferences.setProgressTrackerEnabled(context, enabled)
+                                AppPreferences.setProgressTrackerMetric(context, metric.ifBlank { "Sales" })
+                                AppPreferences.setProgressTrackerPeriod(context, period.ifBlank { "Monthly" })
+                                AppPreferences.setProgressTrackerTarget(context, target.ifBlank { "200000" })
+                                Toast.makeText(context, "Progress tracker settings saved", Toast.LENGTH_SHORT).show()
+                            }
+                        },
+                        shape = RoundedCornerShape(10.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = AppColors.primary, contentColor = AppColors.textOnPrimary)
+                    ) {
+                        Text("Save")
+                    }
+                }
+            }
+
+            Card(
+                modifier = Modifier.fillMaxWidth().border(1.dp, AppColors.border, RoundedCornerShape(16.dp)).premiumClickable { },
+                colors = CardDefaults.cardColors(containerColor = AppColors.cardBg)
+            ) {
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text("Other Settings", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = AppColors.textPrimary)
+                    Text("Future customization options will be added here without changing the current production structure.", fontSize = 12.sp, color = AppColors.textSecondary)
                 }
             }
         }

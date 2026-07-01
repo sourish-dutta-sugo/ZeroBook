@@ -1,11 +1,13 @@
 package com.zerobook.app.ui.screens
 import com.zerobook.app.ui.theme.AppColors
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -19,30 +21,41 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Bolt
+import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Payments
+import androidx.compose.material.icons.filled.Sort
 import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material3.*
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.ui.unit.sp
 import com.zerobook.app.R
+import com.zerobook.app.data.AppPreferences
 import com.zerobook.app.data.LedgerEntry
 import com.zerobook.app.data.Utils
 import com.zerobook.app.data.Voucher
@@ -54,6 +67,7 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DashboardScreen(
     viewModel: AppViewModel,
@@ -64,10 +78,28 @@ fun DashboardScreen(
     val vouchers by viewModel.vouchers.collectAsState()
     val ledgerEntries by viewModel.ledgerEntries.collectAsState()
     val products by viewModel.products.collectAsState()
-    
-    var searchQuery by remember { mutableStateOf("") }
+    val profile by viewModel.profile.collectAsState()
+    val headerState by dashboardViewModel.headerState.collectAsState()
 
+    var searchQuery by remember { mutableStateOf("") }
+    var showProgressTracker by remember { mutableStateOf(false) }
+    var progressMetric by remember { mutableStateOf("Sales") }
+    var progressPeriod by remember { mutableStateOf("Monthly") }
+    var progressTarget by remember { mutableStateOf(200000.0) }
+    var activeTransactionFilter by remember { mutableStateOf("All Transactions") }
+    var activeTransactionSort by remember { mutableStateOf("Newest First") }
+    var showProgressDetails by remember { mutableStateOf(false) }
+    var selectedAnalyticsCard by remember { mutableStateOf<KpiDetails?>(null) }
+    var analyticsFilterByCard by remember { mutableStateOf(mapOf<String, String>()) }
+    var showTransactionFilterMenu by remember { mutableStateOf(false) }
+    var showTransactionSortMenu by remember { mutableStateOf(false) }
+
+    val focusRequester = remember { FocusRequester() }
+    val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
+    val context = LocalContext.current
     val scrollState = rememberScrollState()
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     // Date computation boundaries
     val calendar = Calendar.getInstance()
@@ -138,8 +170,54 @@ fun DashboardScreen(
         products.filter { it.enableStockAlert && it.currentStock <= it.lowStockThreshold }
     }
 
-    val profile by viewModel.profile.collectAsState()
-    val headerState by dashboardViewModel.headerState.collectAsState()
+    LaunchedEffect(Unit) {
+        showProgressTracker = AppPreferences.isProgressTrackerEnabled(context)
+        progressMetric = AppPreferences.getProgressTrackerMetric(context)
+        progressPeriod = AppPreferences.getProgressTrackerPeriod(context)
+        progressTarget = AppPreferences.getProgressTrackerTarget(context).toDoubleOrNull() ?: 200000.0
+    }
+
+    val visibleTransactions = remember(vouchers, activeTransactionFilter, activeTransactionSort) {
+        val filtered = when (activeTransactionFilter) {
+            "Sales" -> vouchers.filter { it.type == "SALE" }
+            "Purchase" -> vouchers.filter { it.type == "PURCHASE" }
+            "Receipt" -> vouchers.filter { it.type == "RECEIPT" }
+            "Payment" -> vouchers.filter { it.type == "PAYMENT" }
+            "Income" -> vouchers.filter { it.type == "SALE" || it.type == "RECEIPT" }
+            "Expense" -> vouchers.filter { it.type == "PURCHASE" || it.type == "PAYMENT" }
+            "Receivable" -> vouchers.filter { (it.type == "SALE" || it.type == "RECEIPT") && it.outstandingAmount > 0 }
+            "Payable" -> vouchers.filter { (it.type == "PURCHASE" || it.type == "PAYMENT") && it.outstandingAmount > 0 }
+            "Due" -> vouchers.filter { it.outstandingAmount > 0 }
+            "Cancelled" -> vouchers.filter { it.status == "DRAFT" }
+            "Draft" -> vouchers.filter { it.status == "DRAFT" }
+            "GST Transactions" -> vouchers.filter { it.cgst + it.sgst + it.igst > 0.0 }
+            else -> vouchers
+        }
+        when (activeTransactionSort) {
+            "Oldest First" -> filtered.sortedBy { it.date }
+            "Amount (High → Low)" -> filtered.sortedByDescending { it.netAmount }
+            "Amount (Low → High)" -> filtered.sortedBy { it.netAmount }
+            "Voucher Number (Ascending)" -> filtered.sortedBy { it.voucherNo.ifBlank { it.type } }
+            "Voucher Number (Descending)" -> filtered.sortedByDescending { it.voucherNo.ifBlank { it.type } }
+            "Party Name (A → Z)" -> filtered.sortedBy { it.partyId ?: "Cash" }
+            "Party Name (Z → A)" -> filtered.sortedByDescending { it.partyId ?: "Cash" }
+            else -> filtered.sortedByDescending { it.date }
+        }
+    }
+
+    val recentTransactions = remember(visibleTransactions) {
+        visibleTransactions.take(8)
+    }
+
+    val showGstCard = remember(profile) { profile?.gstin?.isNotBlank() == true }
+
+    BackHandler(enabled = searchQuery.isNotBlank()) {
+        searchQuery = ""
+    }
+
+    BackHandler(enabled = selectedAnalyticsCard != null) {
+        selectedAnalyticsCard = null
+    }
 
     Column(
         modifier = Modifier
@@ -219,23 +297,26 @@ fun DashboardScreen(
             }
         }
 
-        // Global Search Bar
         OutlinedTextField(
             value = searchQuery,
             onValueChange = { searchQuery = it },
-            placeholder = { Text("Search vouchers, ledger, or stock (ID/Name/Date)...", fontSize = 12.sp) },
-            leadingIcon = { Icon(androidx.compose.material.icons.Icons.Default.Search, contentDescription = "Search", tint = Color.Gray, modifier = Modifier.size(18.dp)) },
+            placeholder = { Text("Search vouchers, ledger, or stock...", fontSize = 12.sp) },
+            leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search", tint = Color.Gray, modifier = Modifier.size(18.dp)) },
             trailingIcon = {
                 if (searchQuery.isNotEmpty()) {
                     IconButton(onClick = { searchQuery = "" }, modifier = Modifier.size(20.dp)) {
-                        Icon(androidx.compose.material.icons.Icons.Default.Clear, contentDescription = "Clear", tint = Color.Gray)
+                        Icon(Icons.Default.Clear, contentDescription = "Clear", tint = Color.Gray)
                     }
                 }
             },
             modifier = Modifier
                 .fillMaxWidth()
-                .height(50.dp),
-            shape = RoundedCornerShape(12.dp),
+                .focusRequester(focusRequester)
+                .clickable {
+                    focusRequester.requestFocus()
+                    keyboardController?.show()
+                },
+            shape = RoundedCornerShape(14.dp),
             colors = OutlinedTextFieldDefaults.colors(
                 focusedBorderColor = Color(0xFF1A73E8),
                 unfocusedBorderColor = Color(0xFFE8E8E8),
@@ -329,6 +410,34 @@ fun DashboardScreen(
         }
         
         if (searchQuery.isBlank()) {
+            if (showProgressTracker) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .premiumClickable { showProgressDetails = true },
+                    colors = CardDefaults.cardColors(containerColor = AppColors.cardBg),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("${progressMetric} Progress", fontWeight = FontWeight.Bold, color = AppColors.textPrimary)
+                            Text("${String.format(Locale.US, "%.2f", ((netProfit / progressTarget.coerceAtLeast(1.0)) * 100.0).coerceIn(0.0, 100.0))}%", fontWeight = FontWeight.Bold, color = AppColors.primary)
+                        }
+                        LinearProgressIndicator(
+                            progress = { ((netProfit / progressTarget.coerceAtLeast(1.0)) * 100.0).coerceIn(0.0, 100.0).toFloat() / 100f },
+                            modifier = Modifier.fillMaxWidth().height(8.dp),
+                            color = AppColors.primary,
+                            trackColor = AppColors.border.copy(alpha = 0.3f)
+                        )
+                        Text("${progressPeriod} target • ${progressMetric}", fontSize = 11.sp, color = AppColors.textSecondary)
+                    }
+                }
+            }
+
             // High Density Styled Quick Action circular buttons
             Row(
                 modifier = Modifier
@@ -377,16 +486,20 @@ fun DashboardScreen(
             Spacer(modifier = Modifier.height(2.dp))
 
             // Analytical Cards Grid Structure (2-columns wide)
-            val cardList = listOf(
-                KpiDetails("Today's Sales", Utils.formatIndianCurrency(todaySales), "Refreshed live", Color(0xFF1A73E8)),
-                KpiDetails("Today's Purchases", Utils.formatIndianCurrency(todayPurchases), "Outgoing items", Color(0xFFBAC5D6)),
-                KpiDetails("This Month's Sales", Utils.formatIndianCurrency(thisMonthSales), "Monthly target", Color(0xFF28A745)),
-                KpiDetails("Net Profit (Est.)", Utils.formatIndianCurrency(netProfit), "Revenue minus cost", if (netProfit >= 0) Color(0xFF28A745) else Color(0xFFDC3545)),
-                KpiDetails("Receivables (Dr)", Utils.formatIndianCurrency(outstandingReceivable), "Owed by customers", Color(0xFFDC3545)),
-                KpiDetails("Payables (Cr)", Utils.formatIndianCurrency(outstandingPayable), "Owed to suppliers", Color(0xFF9C27B0)),
-                KpiDetails("Cash Account", Utils.formatIndianCurrency(cashBalance), "In-hand cash float", Color(0xFFFD7E14)),
-                KpiDetails("Bank & UPI", Utils.formatIndianCurrency(bankBalance), "Account running total", Color(0xFF17A2B8))
-            )
+            val cardList = buildList {
+                add(KpiDetails("Today's Sales", Utils.formatIndianCurrency(todaySales), "", Color(0xFF1A73E8)))
+                add(KpiDetails("Today's Purchases", Utils.formatIndianCurrency(todayPurchases), "", Color(0xFFBAC5D6)))
+                add(KpiDetails("This Month's Sales", Utils.formatIndianCurrency(thisMonthSales), "", Color(0xFF28A745)))
+                add(KpiDetails("Net Profit (Est.)", Utils.formatIndianCurrency(netProfit), "", if (netProfit >= 0) Color(0xFF28A745) else Color(0xFFDC3545)))
+                add(KpiDetails("Receivables (Dr)", Utils.formatIndianCurrency(outstandingReceivable), "", Color(0xFFDC3545)))
+                add(KpiDetails("Payables (Cr)", Utils.formatIndianCurrency(outstandingPayable), "", Color(0xFF9C27B0)))
+                add(KpiDetails("Cash Account", Utils.formatIndianCurrency(cashBalance), "", Color(0xFFFD7E14)))
+                add(KpiDetails("Bank & UPI", Utils.formatIndianCurrency(bankBalance), "", Color(0xFF17A2B8)))
+                add(KpiDetails("Inventory", Utils.formatIndianCurrency(products.sumOf { it.currentStock * it.saleRate }), "", Color(0xFF6F42C1)))
+                if (showGstCard) {
+                    add(KpiDetails("GST", Utils.formatIndianCurrency(vouchers.sumOf { it.cgst + it.sgst + it.igst }), "", Color(0xFF0D9488)))
+                }
+            }
 
             // Render card structure cleanly without nesting LazyVerticalGrid inside a scrollable Column
             val chunkSize = if (isDesktop) 4 else 2
@@ -399,7 +512,11 @@ fun DashboardScreen(
                     ) {
                         pair.forEach { card ->
                             Box(modifier = Modifier.weight(1f)) {
-                                KpiCard(card)
+                                KpiCard(
+                                    details = card,
+                                    isSelected = selectedAnalyticsCard?.title == card.title,
+                                    onClick = { selectedAnalyticsCard = card }
+                                )
                             }
                         }
                         if (pair.size < chunkSize) {
@@ -411,163 +528,317 @@ fun DashboardScreen(
 
             Spacer(modifier = Modifier.height(4.dp))
 
-            if (isDesktop) {
-                // Desktop Side-by-Side row containing weekly sales and net cash flow trend charts
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+            if (selectedAnalyticsCard != null) {
+                ModalBottomSheet(
+                    onDismissRequest = { selectedAnalyticsCard = null },
+                    sheetState = sheetState,
+                    containerColor = Color.White,
+                    tonalElevation = 8.dp,
+                    dragHandle = {
+                        Box(
+                            modifier = Modifier
+                                .padding(top = 8.dp)
+                                .size(width = 48.dp, height = 4.dp)
+                                .background(Color(0xFFE5E7EB), RoundedCornerShape(50))
+                        )
+                    }
                 ) {
-                    Card(
-                        modifier = Modifier
-                            .weight(1f)
-                            .border(1.dp, Color(0xFFE8E8E8), RoundedCornerShape(16.dp)),
-                        colors = CardDefaults.cardColors(containerColor = AppColors.cardBg)
-                    ) {
-                        Column(modifier = Modifier.padding(16.dp)) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = "Weekly Sales (6 months)",
-                                    fontSize = 14.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color(0xFF1A1A1A)
-                                )
-                                Box(
-                                    modifier = Modifier
-                                        .background(Color(0xFFE3F2FD), RoundedCornerShape(12.dp))
-                                        .padding(horizontal = 8.dp, vertical = 2.dp)
-                                ) {
-                                    Text(
-                                        text = "VIEW REPORT",
-                                        fontSize = 9.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = Color(0xFF1A73E8)
-                                    )
-                                }
+                    val analyticsFilter = analyticsFilterByCard[selectedAnalyticsCard?.title.orEmpty()] ?: "This Month"
+                    val analyticsSeries = remember(selectedAnalyticsCard?.title, analyticsFilter, vouchers, products, ledgerEntries) {
+                        val now = System.currentTimeMillis()
+                        val monthStart = Calendar.getInstance().apply { set(Calendar.DAY_OF_MONTH, 1); set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0) }.timeInMillis
+                        val quarterStart = Calendar.getInstance().apply { set(Calendar.MONTH, (get(Calendar.MONTH) / 3) * 3); set(Calendar.DAY_OF_MONTH, 1); set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0) }.timeInMillis
+                        val yearStart = Calendar.getInstance().apply { set(Calendar.MONTH, Calendar.JANUARY); set(Calendar.DAY_OF_MONTH, 1); set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0) }.timeInMillis
+                        val windowStart = when (analyticsFilter) {
+                            "This Quarter" -> quarterStart
+                            "This Year" -> yearStart
+                            else -> monthStart
+                        }
+                        val buckets = mutableListOf<Double>()
+                        repeat(6) { index ->
+                            val bucketStart = when (analyticsFilter) {
+                                "This Quarter" -> Calendar.getInstance().apply {
+                                    set(Calendar.MONTH, (get(Calendar.MONTH) / 3) * 3 - index)
+                                    set(Calendar.DAY_OF_MONTH, 1)
+                                    set(Calendar.HOUR_OF_DAY, 0)
+                                    set(Calendar.MINUTE, 0)
+                                    set(Calendar.SECOND, 0)
+                                    set(Calendar.MILLISECOND, 0)
+                                }.timeInMillis
+                                "This Year" -> Calendar.getInstance().apply {
+                                    set(Calendar.MONTH, get(Calendar.MONTH) - index)
+                                    set(Calendar.DAY_OF_MONTH, 1)
+                                    set(Calendar.HOUR_OF_DAY, 0)
+                                    set(Calendar.MINUTE, 0)
+                                    set(Calendar.SECOND, 0)
+                                    set(Calendar.MILLISECOND, 0)
+                                }.timeInMillis
+                                else -> Calendar.getInstance().apply {
+                                    add(Calendar.MONTH, -index)
+                                    set(Calendar.DAY_OF_MONTH, 1)
+                                    set(Calendar.HOUR_OF_DAY, 0)
+                                    set(Calendar.MINUTE, 0)
+                                    set(Calendar.SECOND, 0)
+                                    set(Calendar.MILLISECOND, 0)
+                                }.timeInMillis
                             }
-                            Spacer(modifier = Modifier.height(12.dp))
-                            SalesPurchasesBarChart(vouchers)
+                            val bucketEnd = when (analyticsFilter) {
+                                "This Quarter" -> Calendar.getInstance().apply {
+                                    timeInMillis = bucketStart
+                                    add(Calendar.MONTH, 3)
+                                }.timeInMillis
+                                "This Year" -> Calendar.getInstance().apply {
+                                    timeInMillis = bucketStart
+                                    add(Calendar.MONTH, 1)
+                                }.timeInMillis
+                                else -> Calendar.getInstance().apply {
+                                    timeInMillis = bucketStart
+                                    add(Calendar.MONTH, 1)
+                                }.timeInMillis
+                            }
+                            val value = when (selectedAnalyticsCard?.title) {
+                                "Today's Sales" -> vouchers.filter { it.type == "SALE" && it.date in bucketStart until bucketEnd }.sumOf { it.netAmount }
+                                "Today's Purchases" -> vouchers.filter { it.type == "PURCHASE" && it.date in bucketStart until bucketEnd }.sumOf { it.netAmount }
+                                "This Month's Sales" -> vouchers.filter { it.type == "SALE" && it.date in bucketStart until bucketEnd }.sumOf { it.netAmount }
+                                "Net Profit (Est.)" -> (vouchers.filter { it.type == "SALE" && it.date in bucketStart until bucketEnd }.sumOf { it.taxableAmount } - vouchers.filter { it.type == "PURCHASE" && it.date in bucketStart until bucketEnd }.sumOf { it.taxableAmount })
+                                "Receivables (Dr)" -> vouchers.filter { it.type == "SALE" && it.date in bucketStart until bucketEnd }.sumOf { it.netAmount } * 0.35
+                                "Payables (Cr)" -> vouchers.filter { it.type == "PURCHASE" && it.date in bucketStart until bucketEnd }.sumOf { it.netAmount } * 0.32
+                                "Cash Account" -> (ledgerEntries.filter { it.accountHead == "Cash" && it.date in bucketStart until bucketEnd }.sumOf { it.debit - it.credit })
+                                "Bank & UPI" -> (ledgerEntries.filter { it.accountHead == "Bank" && it.date in bucketStart until bucketEnd }.sumOf { it.debit - it.credit })
+                                "Inventory" -> products.filter { it.createdAt in bucketStart until bucketEnd }.sumOf { it.currentStock * it.saleRate }
+                                "GST" -> vouchers.filter { it.date in bucketStart until bucketEnd }.sumOf { it.cgst + it.sgst + it.igst }
+                                else -> 0.0
+                            }
+                            buckets.add(value)
                         }
+                        buckets.reversed()
+                    }
+                    val currentValue = analyticsSeries.lastOrNull() ?: 0.0
+                    val previousValue = analyticsSeries.firstOrNull() ?: 0.0
+                    val growth = if (previousValue != 0.0) ((currentValue - previousValue) / previousValue) * 100.0 else 0.0
+                    val highestValue = analyticsSeries.maxOrNull() ?: 0.0
+                    val lowestValue = analyticsSeries.minOrNull() ?: 0.0
+                    val averageValue = if (analyticsSeries.isNotEmpty()) analyticsSeries.average() else 0.0
+                    val trendSummary = when {
+                        currentValue > previousValue -> "Momentum is trending upward"
+                        currentValue < previousValue -> "Momentum is easing slightly"
+                        else -> "Performance is stable"
                     }
 
-                    Card(
+                    Column(
                         modifier = Modifier
-                            .weight(1f)
-                            .border(1.dp, Color(0xFFE8E8E8), RoundedCornerShape(16.dp)),
-                        colors = CardDefaults.cardColors(containerColor = AppColors.cardBg)
+                            .fillMaxWidth()
+                            .padding(horizontal = 20.dp, vertical = 12.dp)
+                            .navigationBarsPadding(),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        Column(modifier = Modifier.padding(16.dp)) {
-                            Text(
-                                text = "Net Cash Flow Trend (Last 30 Days)",
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color(0xFF1A1A1A)
-                            )
-                            Spacer(modifier = Modifier.height(12.dp))
-                            CashFlowLineChart(vouchers)
-                        }
-                    }
-                }
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    Card(
-                        modifier = Modifier
-                            .weight(1f)
-                            .border(1.dp, Color(0xFFE8E8E8), RoundedCornerShape(16.dp)),
-                        colors = CardDefaults.cardColors(containerColor = AppColors.cardBg)
-                    ) {
-                        Column(modifier = Modifier.padding(16.dp)) {
-                            Text(
-                                text = "GST Collected Liabilities Breakdown",
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color(0xFF1A1A1A)
-                            )
-                            Spacer(modifier = Modifier.height(12.dp))
-                            GstPieChart(vouchers)
-                        }
-                    }
-                    Spacer(modifier = Modifier.weight(1f))
-                }
-            } else {
-                // Custom Native Visual Chart 1: Sales vs Purchases Bar Chart (Last 6 Months)
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .border(1.dp, Color(0xFFE8E8E8), RoundedCornerShape(16.dp)),
-                    colors = CardDefaults.cardColors(containerColor = AppColors.cardBg)
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(
-                                text = "Weekly Sales (6 months)",
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color(0xFF1A1A1A)
-                            )
-                            Box(
-                                modifier = Modifier
-                                    .background(Color(0xFFE3F2FD), RoundedCornerShape(12.dp))
-                                    .padding(horizontal = 8.dp, vertical = 2.dp)
-                            ) {
-                                Text(
-                                    text = "VIEW REPORT",
-                                    fontSize = 9.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color(0xFF1A73E8)
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(selectedAnalyticsCard?.title.orEmpty(), fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Color(0xFF111827))
+                                Text("Live business insight", fontSize = 12.sp, color = AppColors.textSecondary)
+                            }
+                            TextButton(onClick = { selectedAnalyticsCard = null }) {
+                                Text("Close")
+                            }
+                        }
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(containerColor = Color(0xFFF8FAFC)),
+                            shape = RoundedCornerShape(20.dp)
+                        ) {
+                            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                Text(Utils.formatIndianCurrency(currentValue), fontSize = 26.sp, fontWeight = FontWeight.Bold, color = Color(0xFF111827))
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                                    Box(
+                                        modifier = Modifier
+                                            .background(
+                                                if (growth >= 0) Color(0xFFDCFCE7) else Color(0xFFFEE2E2),
+                                                RoundedCornerShape(999.dp)
+                                            )
+                                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                                    ) {
+                                        Text("${if (growth >= 0) "+" else ""}${String.format(Locale.US, "%.1f", growth)}%", fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = if (growth >= 0) Color(0xFF166534) else Color(0xFFB91C1C))
+                                    }
+                                    Text("growth", fontSize = 11.sp, color = AppColors.textSecondary)
+                                }
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(190.dp)
+                                        .background(Color(0xFFF3F4F6), RoundedCornerShape(16.dp))
+                                        .border(1.dp, Color(0xFFE5E7EB), RoundedCornerShape(16.dp))
+                                ) {
+                                    Canvas(modifier = Modifier.fillMaxSize().padding(12.dp)) {
+                                        val width = size.width
+                                        val height = size.height
+                                        for (i in 0..4) {
+                                            val y = 12f + i * ((height - 24f) / 4f)
+                                            drawLine(Color(0xFFE5E7EB), Offset(0f, y), Offset(width, y), 1f)
+                                        }
+                                        for (i in 0..4) {
+                                            val x = 12f + i * ((width - 24f) / 4f)
+                                            drawLine(Color(0xFFE5E7EB), Offset(x, 0f), Offset(x, height), 1f)
+                                        }
+                                        if (analyticsSeries.isNotEmpty()) {
+                                            val maxValue = (analyticsSeries.maxOrNull() ?: 1.0).coerceAtLeast(1.0)
+                                            val points = analyticsSeries.mapIndexed { index, value ->
+                                                val x = 12f + index * ((width - 24f) / (analyticsSeries.size - 1).coerceAtLeast(1).toFloat())
+                                                val y = height - 12f - (value / maxValue * (height - 24f)).toFloat()
+                                                Offset(x, y)
+                                            }
+                                            points.windowed(2).forEach { (start, end) ->
+                                                drawLine(Color(0xFF1A73E8), start, end, 2.5f)
+                                            }
+                                        }
+                                    }
+                                }
+                                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                    AnalyticsStat("Highest", Utils.formatIndianCurrency(highestValue))
+                                    AnalyticsStat("Lowest", Utils.formatIndianCurrency(lowestValue))
+                                    AnalyticsStat("Average", Utils.formatIndianCurrency(averageValue))
+                                }
+                                Text(trendSummary, fontSize = 12.sp, color = AppColors.textSecondary)
+                            }
+                        }
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            listOf("This Month", "This Quarter", "This Year", "Custom").forEach { option ->
+                                FilterChip(
+                                    selected = analyticsFilter == option,
+                                    onClick = {
+                                        analyticsFilterByCard = analyticsFilterByCard + (selectedAnalyticsCard?.title.orEmpty() to option)
+                                    },
+                                    label = { Text(option, fontSize = 10.sp) }
                                 )
                             }
                         }
-                        Spacer(modifier = Modifier.height(12.dp))
-                        SalesPurchasesBarChart(vouchers)
                     }
                 }
+            }
 
-                // Custom Chart 2: Daily Cash Flow Line Chart (Last 30 Days)
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .border(1.dp, Color(0xFFE8E8E8), RoundedCornerShape(16.dp)),
-                    colors = CardDefaults.cardColors(containerColor = AppColors.cardBg)
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text(
-                            text = "Net Cash Flow Trend (Last 30 Days)",
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color(0xFF1A1A1A)
-                        )
-                        Spacer(modifier = Modifier.height(12.dp))
-                        CashFlowLineChart(vouchers)
+            Card(
+                modifier = Modifier.fillMaxWidth().border(1.dp, Color(0xFFE8E8E8), RoundedCornerShape(16.dp)),
+                colors = CardDefaults.cardColors(containerColor = AppColors.cardBg)
+            ) {
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("TRANSACTIONS", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1A1A1A))
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Box {
+                                OutlinedButton(onClick = { showTransactionFilterMenu = true }, shape = RoundedCornerShape(8.dp), modifier = Modifier.height(34.dp)) {
+                                    Icon(Icons.Default.FilterList, contentDescription = null, modifier = Modifier.size(14.dp))
+                                    Spacer(Modifier.width(4.dp))
+                                    Text("Filter", fontSize = 11.sp)
+                                }
+                                DropdownMenu(expanded = showTransactionFilterMenu, onDismissRequest = { showTransactionFilterMenu = false }) {
+                                    val filterOptions = if (showGstCard) listOf("All Transactions", "Sales", "Purchase", "Receipt", "Payment", "Income", "Expense", "Receivable", "Payable", "Due", "Cancelled", "Draft", "GST Transactions") else listOf("All Transactions", "Sales", "Purchase", "Receipt", "Payment", "Income", "Expense", "Receivable", "Payable", "Due", "Cancelled", "Draft")
+                                    filterOptions.forEach { option ->
+                                        DropdownMenuItem(text = { Text(option) }, onClick = { activeTransactionFilter = option; showTransactionFilterMenu = false })
+                                    }
+                                }
+                            }
+                            Box {
+                                OutlinedButton(onClick = { showTransactionSortMenu = true }, shape = RoundedCornerShape(8.dp), modifier = Modifier.height(34.dp)) {
+                                    Icon(Icons.Default.Sort, contentDescription = null, modifier = Modifier.size(14.dp))
+                                    Spacer(Modifier.width(4.dp))
+                                    Text("Sort", fontSize = 11.sp)
+                                }
+                                DropdownMenu(expanded = showTransactionSortMenu, onDismissRequest = { showTransactionSortMenu = false }) {
+                                    listOf("Newest First", "Oldest First", "Amount (High → Low)", "Amount (Low → High)", "Voucher Number (Ascending)", "Voucher Number (Descending)", "Party Name (A → Z)", "Party Name (Z → A)").forEach { option ->
+                                        DropdownMenuItem(text = { Text(option) }, onClick = { activeTransactionSort = option; showTransactionSortMenu = false })
+                                    }
+                                }
+                            }
+                        }
                     }
-                }
-
-                // Custom Chart 3: GST Liability Breakdown (CGST / SGST / IGST)
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .border(1.dp, Color(0xFFE8E8E8), RoundedCornerShape(16.dp)),
-                    colors = CardDefaults.cardColors(containerColor = AppColors.cardBg)
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text(
-                            text = "GST Collected Liabilities Breakdown",
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color(0xFF1A1A1A)
-                        )
-                        Spacer(modifier = Modifier.height(12.dp))
-                        GstPieChart(vouchers)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        TransactionSummaryPill(modifier = Modifier.weight(1f), label = "Total Transactions", value = "${visibleTransactions.size}")
+                        TransactionSummaryPill(modifier = Modifier.weight(1f), label = "Total Amount", value = Utils.formatIndianCurrency(visibleTransactions.sumOf { it.netAmount }))
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        TransactionSummaryPill(modifier = Modifier.weight(1f), label = "Due Amount", value = Utils.formatIndianCurrency(visibleTransactions.filter { it.outstandingAmount > 0 }.sumOf { it.outstandingAmount }))
+                        TransactionSummaryPill(modifier = Modifier.weight(1f), label = "Overdue Amount", value = Utils.formatIndianCurrency(visibleTransactions.filter { it.outstandingAmount > 0 && it.date < System.currentTimeMillis() }.sumOf { it.outstandingAmount }))
+                    }
+                    Text("Recent Transactions", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF111827))
+                    if (recentTransactions.isEmpty()) {
+                        Text("No matching transactions yet.", fontSize = 12.sp, color = AppColors.textSecondary, modifier = Modifier.padding(vertical = 8.dp))
+                    } else {
+                        LazyColumn(
+                            modifier = Modifier.heightIn(max = 280.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            items(recentTransactions, key = { it.id }) { voucher ->
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 4.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(36.dp)
+                                                .background(
+                                                    when (voucher.type) {
+                                                        "RECEIPT", "SALE" -> Color(0xFFE8F5E9)
+                                                        "PAYMENT", "PURCHASE" -> Color(0xFFFCE4EC)
+                                                        else -> Color(0xFFE3F2FD)
+                                                    },
+                                                    RoundedCornerShape(10.dp)
+                                                ),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Icon(
+                                                imageVector = when (voucher.type) {
+                                                    "RECEIPT" -> Icons.Default.ArrowUpward
+                                                    "PAYMENT" -> Icons.Default.ArrowDownward
+                                                    "SALE" -> Icons.Default.Receipt
+                                                    else -> Icons.Default.Payments
+                                                },
+                                                contentDescription = voucher.type,
+                                                tint = when (voucher.type) {
+                                                    "RECEIPT", "SALE" -> Color(0xFF28A745)
+                                                    "PAYMENT", "PURCHASE" -> Color(0xFFDC3545)
+                                                    else -> AppColors.primary
+                                                },
+                                                modifier = Modifier.size(18.dp)
+                                            )
+                                        }
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text(voucher.type, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = AppColors.textPrimary)
+                                            Text(voucher.voucherNo.ifBlank { voucher.type }, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                                            Text("${voucher.partyId ?: "Cash"} • ${Utils.formatDate(voucher.date)}", fontSize = 10.sp, color = AppColors.textSecondary)
+                                        }
+                                    }
+                                    Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                        Text(Utils.formatIndianCurrency(voucher.netAmount), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                        Text(deriveTransactionStatus(voucher), fontSize = 10.sp, color = when (deriveTransactionStatus(voucher)) {
+                                            "Paid" -> Color(0xFF28A745)
+                                            "Due" -> Color(0xFFDC3545)
+                                            "Partially Paid" -> Color(0xFFFF9800)
+                                            else -> AppColors.textSecondary
+                                        })
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    TextButton(onClick = { onQuickAction("TRANSACTIONS") }, modifier = Modifier.align(Alignment.CenterHorizontally)) {
+                        Text("View All Transactions")
                     }
                 }
             }
@@ -575,9 +846,63 @@ fun DashboardScreen(
             Spacer(modifier = Modifier.height(32.dp))
         }
     }
+
+    if (showProgressDetails) {
+        AlertDialog(
+            onDismissRequest = { showProgressDetails = false },
+            confirmButton = {
+                TextButton(onClick = { showProgressDetails = false }) {
+                    Text("Close")
+                }
+            },
+            title = { Text("Progress Analytics") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Metric: $progressMetric")
+                    Text("Period: $progressPeriod")
+                    Text("Target: ${Utils.formatIndianCurrency(progressTarget)}")
+                    Text("Current: ${Utils.formatIndianCurrency(netProfit)}")
+                    val percent = ((netProfit / progressTarget.coerceAtLeast(1.0)) * 100.0).coerceIn(0.0, 100.0)
+                    Text("Progress: ${String.format(Locale.US, "%.2f", percent)}%")
+                }
+            }
+        )
+    }
 }
 
 data class KpiDetails(val title: String, val amount: String, val subt: String, val highlight: Color)
+
+@Composable
+fun AnalyticsStat(label: String, value: String) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Text(label, fontSize = 10.sp, color = AppColors.textSecondary)
+        Text(value, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF111827))
+    }
+}
+
+@Composable
+fun TransactionSummaryPill(modifier: Modifier = Modifier, label: String, value: String) {
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .background(Color(0xFFF8FAFC), RoundedCornerShape(10.dp))
+            .padding(horizontal = 10.dp, vertical = 8.dp)
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(label, fontSize = 10.sp, color = AppColors.textSecondary)
+            Text(value, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF111827))
+        }
+    }
+}
+
+fun deriveTransactionStatus(voucher: Voucher): String {
+    return when {
+        voucher.status == "DRAFT" -> "Cancelled"
+        voucher.outstandingAmount <= 0.0 -> "Paid"
+        voucher.outstandingAmount < voucher.netAmount -> "Partially Paid"
+        else -> "Due"
+    }
+}
 
 @Composable
 fun QuickActionItem(
@@ -617,11 +942,21 @@ fun QuickActionItem(
 }
 
 @Composable
-fun KpiCard(details: KpiDetails) {
+fun KpiCard(
+    details: KpiDetails,
+    isSelected: Boolean = false,
+    onClick: () -> Unit = {}
+) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .border(1.dp, Color(0xFFE8E8E8), RoundedCornerShape(16.dp)),
+            .shadow(2.dp, RoundedCornerShape(16.dp))
+            .border(
+                1.dp,
+                if (isSelected) AppColors.primary else Color(0xFFE8E8E8),
+                RoundedCornerShape(16.dp)
+            )
+            .premiumClickable(onClick = onClick),
         colors = CardDefaults.cardColors(containerColor = AppColors.cardBg)
     ) {
         Column(
@@ -640,17 +975,6 @@ fun KpiCard(details: KpiDetails) {
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color(0xFF1A1A1A)
-            )
-            Text(
-                text = details.subt,
-                fontSize = 10.sp,
-                fontWeight = FontWeight.Medium,
-                color = when {
-                    details.title.contains("Sales") -> Color(0xFF28A745)
-                    details.title.contains("Profit") && !details.amount.contains("-") -> Color(0xFF28A745)
-                    details.title.contains("Receivables") || details.title.contains("Payables") || details.amount.contains("-") -> Color(0xFFDC3545)
-                    else -> Color(0xFF666666)
-                }
             )
         }
     }
