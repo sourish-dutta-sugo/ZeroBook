@@ -19,6 +19,12 @@ android {
     vectorDrawables.useSupportLibrary = true
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+    ndk {
+      abiFilters += listOf("armeabi-v7a", "arm64-v8a")
+    }
+
+    resourceConfigurations += listOf("en")
   }
 
   signingConfigs {
@@ -33,7 +39,7 @@ android {
 
   buildTypes {
     release {
-      isCrunchPngs = false
+      isCrunchPngs = true
       isMinifyEnabled = true
       isShrinkResources = true
       proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
@@ -109,17 +115,12 @@ dependencies {
   implementation(libs.androidx.room.ktx)
   implementation(libs.androidx.room.runtime)
   implementation(libs.coil.compose)
-  implementation(libs.converter.moshi)
   // implementation(libs.firebase.ai)
   implementation(libs.kotlinx.coroutines.android)
   implementation(libs.kotlinx.coroutines.core)
-  implementation(libs.logging.interceptor)
-  implementation(libs.moshi.kotlin)
-  implementation(libs.okhttp)
-  implementation("com.google.mlkit:text-recognition:16.0.1")
-  implementation("com.google.mlkit:barcode-scanning:17.3.0")
+  implementation(libs.play.services.mlkit.text.recognition)
+  implementation(libs.play.services.mlkit.barcode.scanning)
   implementation(libs.play.services.location)
-  implementation(libs.retrofit)
   implementation("com.sun.mail:android-mail:1.6.7")
   implementation("com.sun.mail:android-activation:1.6.7")
   testImplementation(libs.androidx.compose.ui.test.junit4)
@@ -139,5 +140,4 @@ dependencies {
   debugImplementation(libs.androidx.compose.ui.test.manifest)
   debugImplementation(libs.androidx.compose.ui.tooling)
   "ksp"(libs.androidx.room.compiler)
-  "ksp"(libs.moshi.kotlin.codegen)
 }

@@ -30,8 +30,7 @@ import com.zerobook.app.data.Utils
 import com.zerobook.app.data.VoucherItem
 import com.zerobook.app.data.filterDecimalInput
 import com.zerobook.app.data.filterHsnInput
-import com.zerobook.app.data.searchHsn
-import com.zerobook.app.data.suggestHsn
+import com.zerobook.app.data.HsnLookup
 import com.zerobook.app.ui.theme.AppColors
 import com.zerobook.app.ui.theme.TextDark
 import com.zerobook.app.ui.theme.TextGray
@@ -104,7 +103,7 @@ fun VoucherItemEntrySheet(
 
     val hsnSuggestions = remember(productName, hsnCode) {
         if (hsnCode.isNotBlank()) emptyList()
-        else searchHsn(productName)
+        else HsnLookup.search(productName)
     }
 
     LaunchedEffect(productName, products) {
@@ -113,7 +112,7 @@ fun VoucherItemEntrySheet(
             suggestedHsn = null
         } else {
             kotlinx.coroutines.delay(1200)
-            suggestedHsn = suggestHsn(query, products)
+            suggestedHsn = HsnLookup.suggest(query, products)
         }
     }
 
