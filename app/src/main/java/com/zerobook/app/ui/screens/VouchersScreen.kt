@@ -85,6 +85,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.text.font.FontStyle
@@ -126,6 +127,72 @@ private data class VoucherTypeCardData(
     val icon: androidx.compose.ui.graphics.vector.ImageVector,
     val accent: Color
 )
+
+private fun voucherTypeCards(): List<VoucherTypeCardData> = listOf(
+    VoucherTypeCardData("JOURNAL", "Journal", "Manual ledger-style entry", Icons.Outlined.Edit, Color(0xFF334155)),
+    VoucherTypeCardData("SALE", "Sales", "Record a sale to customer", Icons.AutoMirrored.Filled.ReceiptLong, Color(0xFF2563EB)),
+    VoucherTypeCardData("PURCHASE", "Purchase", "Record purchase from supplier", Icons.Default.Store, Color(0xFF7C3AED)),
+    VoucherTypeCardData("RECEIPT", "Receipt", "Receive payment from customer", Icons.Default.Payments, Color(0xFF059669)),
+    VoucherTypeCardData("PAYMENT", "Payment", "Pay a supplier or expense", Icons.Default.CreditCard, Color(0xFFDC2626)),
+    VoucherTypeCardData("SALE_RETURN", "Sales Return", "Customer returns goods", Icons.Default.SwapHoriz, Color(0xFFEA580C)),
+    VoucherTypeCardData("PURCHASE_RETURN", "Purchase Return", "Return goods to supplier", Icons.Default.SwapHoriz, Color(0xFFB91C1C)),
+    VoucherTypeCardData("BILLS_RECEIVABLE", "Bills Receivable", "View amounts owed to you", Icons.AutoMirrored.Filled.ReceiptLong, Color(0xFF0F766E)),
+    VoucherTypeCardData("BILLS_PAYABLE", "Bills Payable", "View amounts you owe", Icons.AutoMirrored.Filled.ReceiptLong, Color(0xFF92400E)),
+    VoucherTypeCardData("DEBIT_NOTE", "Debit Note", "Raise debit against party", Icons.Default.Description, Color(0xFF9333EA)),
+    VoucherTypeCardData("CREDIT_NOTE", "Credit Note", "Issue credit to party", Icons.Default.Description, Color(0xFF1D4ED8)),
+    VoucherTypeCardData("QUOTATION", "Quotation", "Create estimate or quote", Icons.Default.RequestQuote, Color(0xFF4F46E5)),
+    VoucherTypeCardData("DELIVERY_CHALLAN", "Delivery Challan", "Record goods dispatch", Icons.Default.LocalShipping, Color(0xFF0891B2)),
+    VoucherTypeCardData("INCOME", "Income", "Track incoming funds", Icons.Default.Payments, Color(0xFF0F766E)),
+    VoucherTypeCardData("EXPENSE", "Expense", "Record a business expense", Icons.Default.Inventory2, Color(0xFFBE185D))
+)
+
+private fun voucherTypeLabel(type: String): String = when (type) {
+    "SALE" -> "Sales"
+    "PURCHASE" -> "Purchase"
+    "RECEIPT" -> "Receipt"
+    "PAYMENT" -> "Payment"
+    "JOURNAL" -> "Journal"
+    "SALE_RETURN" -> "Sales Return"
+    "PURCHASE_RETURN" -> "Purchase Return"
+    "BILLS_RECEIVABLE" -> "Bills Receivable"
+    "BILLS_PAYABLE" -> "Bills Payable"
+    "DEBIT_NOTE" -> "Debit Note"
+    "CREDIT_NOTE" -> "Credit Note"
+    "QUOTATION" -> "Quotation"
+    "DELIVERY_CHALLAN" -> "Delivery Challan"
+    "INCOME" -> "Income"
+    "EXPENSE" -> "Expense"
+    else -> type.replace('_', ' ').replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
+}
+
+private fun voucherBadgeColor(type: String): Color = AppColors.primary
+
+private fun sortedVouchersForDisplay(
+    vouchers: List<Voucher>,
+    sortOption: String,
+    startDate: Long?,
+    endDate: Long?
+): List<Voucher> {
+    val baseList = when (sortOption) {
+        "LATEST" -> vouchers.sortedByDescending { it.date }
+        "OLDEST" -> vouchers.sortedBy { it.date }
+        "THIS_WEEK" -> vouchers.filter { it.date >= System.currentTimeMillis() - 7L * 24 * 60 * 60 * 1000 }
+        "THIS_MONTH" -> vouchers.filter { it.date >= System.currentTimeMillis() - 30L * 24 * 60 * 60 * 1000 }
+        "THIS_YEAR" -> vouchers.filter { it.date >= System.currentTimeMillis() - 365L * 24 * 60 * 60 * 1000 }
+        "CUSTOM" -> {
+            val start = startDate ?: 0L
+            val end = endDate ?: Long.MAX_VALUE
+            vouchers.filter { voucher -> voucher.date in start..end }
+        }
+        else -> vouchers
+    }
+
+    return if (sortOption == "CUSTOM" && (startDate == null || endDate == null)) {
+        vouchers
+    } else {
+        baseList
+    }
+}
 
 private data class JournalUiRow(
     val id: String = UUID.randomUUID().toString(),
@@ -347,22 +414,153 @@ fun VouchersScreen(
 
     var searchQuery by remember { mutableStateOf("") }
     var selectedTypeFilter by remember { mutableStateOf("ALL") }
+    var showFilterSheet by remember { mutableStateOf(false) }
+    var showSortSheet by remember { mutableStateOf(false) }
+    var pendingFilter by remember { mutableStateOf("ALL") }
+    var pendingSort by remember { mutableStateOf("DEFAULT") }
+    var pendingStartDate by remember { mutableStateOf<Long?>(null) }
+    var pendingEndDate by remember { mutableStateOf<Long?>(null) }
+    var showStartDatePicker by remember { mutableStateOf(false) }
+    var showEndDatePicker by remember { mutableStateOf(false) }
+    var sortOption by remember { mutableStateOf("DEFAULT") }
+    var customStartDate by remember { mutableStateOf<Long?>(null) }
+    var customEndDate by remember { mutableStateOf<Long?>(null) }
 
     val filteredVouchers = remember(vouchers, searchQuery, selectedTypeFilter, parties) {
         vouchers.filter { voucher ->
             val partyName = parties.find { it.id == voucher.partyId }?.name ?: "Cash / Bank"
             val matchesSearch = voucher.voucherNo.contains(searchQuery, ignoreCase = true) ||
                     partyName.contains(searchQuery, ignoreCase = true)
-            val matchesType = selectedTypeFilter == "ALL" || voucher.type == selectedTypeFilter
+            val matchesType = when (selectedTypeFilter) {
+                "ALL" -> true
+                "INCOME" -> voucher.type in setOf("INCOME", "SALE", "RECEIPT")
+                "EXPENSE" -> voucher.type in setOf("EXPENSE", "PURCHASE", "PAYMENT")
+                else -> voucher.type == selectedTypeFilter
+            }
             matchesSearch && matchesType
         }
     }
 
-    var selectedVoucherId by remember { mutableStateOf<String?>(null) }
+    val displayedVouchers = remember(filteredVouchers, sortOption, customStartDate, customEndDate) {
+        sortedVouchersForDisplay(filteredVouchers, sortOption, customStartDate, customEndDate)
+    }
 
-    LaunchedEffect(filteredVouchers, isDesktop) {
-        if (isDesktop && selectedVoucherId == null && filteredVouchers.isNotEmpty()) {
-            selectedVoucherId = filteredVouchers.first().id
+    var selectedVoucherId by remember { mutableStateOf<String?>(null) }
+    val screenWidthDp = LocalConfiguration.current.screenWidthDp
+    val isTablet = screenWidthDp >= 600
+
+    LaunchedEffect(displayedVouchers, isDesktop) {
+        if (isDesktop && selectedVoucherId == null && displayedVouchers.isNotEmpty()) {
+            selectedVoucherId = displayedVouchers.first().id
+        }
+    }
+
+    if (showFilterSheet) {
+        ModalBottomSheet(onDismissRequest = { showFilterSheet = false }) {
+            Column(modifier = Modifier.fillMaxWidth().padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text("Filter vouchers", fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
+                val filterOptions = listOf("ALL", "JOURNAL", "SALE", "PURCHASE", "RECEIPT", "PAYMENT", "SALE_RETURN", "PURCHASE_RETURN", "DEBIT_NOTE", "CREDIT_NOTE", "BILLS_RECEIVABLE", "BILLS_PAYABLE", "QUOTATION", "DELIVERY_CHALLAN", "INCOME", "EXPENSE")
+                filterOptions.forEach { type ->
+                    FilterChip(
+                        selected = pendingFilter == type,
+                        onClick = { pendingFilter = type },
+                        label = { Text(voucherTypeLabel(type)) },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = AppColors.primary,
+                            selectedLabelColor = AppColors.textOnPrimary
+                        )
+                    )
+                }
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                    TextButton(onClick = { showFilterSheet = false }) { Text("Cancel") }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Button(onClick = {
+                        selectedTypeFilter = pendingFilter
+                        showFilterSheet = false
+                    }) { Text("Apply") }
+                }
+            }
+        }
+    }
+
+    if (showSortSheet) {
+        ModalBottomSheet(onDismissRequest = { showSortSheet = false }) {
+            Column(modifier = Modifier.fillMaxWidth().padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text("Sort vouchers", fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
+                val sortOptions = listOf(
+                    "DEFAULT" to "Default order",
+                    "LATEST" to "Latest first",
+                    "OLDEST" to "Oldest first",
+                    "THIS_WEEK" to "This week",
+                    "THIS_MONTH" to "This month",
+                    "THIS_YEAR" to "This year",
+                    "CUSTOM" to "Custom date range"
+                )
+                sortOptions.forEach { (value, label) ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth().clickable { pendingSort = value },
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(label)
+                        if (pendingSort == value) {
+                            Icon(Icons.Default.Check, contentDescription = null, tint = AppColors.primary)
+                        }
+                    }
+                }
+                if (pendingSort == "CUSTOM") {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedButton(onClick = { showStartDatePicker = true }) { Text(pendingStartDate?.let { Utils.formatDate(it) } ?: "Start date") }
+                        OutlinedButton(onClick = { showEndDatePicker = true }) { Text(pendingEndDate?.let { Utils.formatDate(it) } ?: "End date") }
+                    }
+                }
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                    TextButton(onClick = { showSortSheet = false }) { Text("Cancel") }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Button(onClick = {
+                        sortOption = pendingSort
+                        customStartDate = pendingStartDate
+                        customEndDate = pendingEndDate
+                        showSortSheet = false
+                    }) { Text("Apply") }
+                }
+            }
+        }
+    }
+
+    if (showStartDatePicker) {
+        val startPickerState = rememberDatePickerState(initialSelectedDateMillis = pendingStartDate ?: System.currentTimeMillis())
+        DatePickerDialog(
+            onDismissRequest = { showStartDatePicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    pendingStartDate = startPickerState.selectedDateMillis
+                    showStartDatePicker = false
+                }) { Text("Done") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showStartDatePicker = false }) { Text("Cancel") }
+            }
+        ) {
+            DatePicker(state = startPickerState, showModeToggle = false)
+        }
+    }
+
+    if (showEndDatePicker) {
+        val endPickerState = rememberDatePickerState(initialSelectedDateMillis = pendingEndDate ?: System.currentTimeMillis())
+        DatePickerDialog(
+            onDismissRequest = { showEndDatePicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    pendingEndDate = endPickerState.selectedDateMillis
+                    showEndDatePicker = false
+                }) { Text("Done") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showEndDatePicker = false }) { Text("Cancel") }
+            }
+        ) {
+            DatePicker(state = endPickerState, showModeToggle = false)
         }
     }
 
@@ -411,24 +609,23 @@ fun VouchersScreen(
 
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            horizontalArrangement = Arrangement.End,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            val filters = listOf("ALL", "SALE", "PURCHASE", "RECEIPT", "PAYMENT")
-                            filters.forEach { filter ->
-                                FilterChip(
-                                    selected = selectedTypeFilter == filter,
-                                    onClick = { selectedTypeFilter = filter },
-                                    label = { Text(filter, fontSize = 9.sp) },
-                                    shape = RoundedCornerShape(4.dp),
-                                    colors = FilterChipDefaults.filterChipColors(
-                                        selectedContainerColor = AppColors.primary,
-                                        selectedLabelColor = AppColors.textOnPrimary
-                                    )
-                                )
+                            OutlinedButton(onClick = { pendingFilter = selectedTypeFilter; showFilterSheet = true }, contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)) {
+                                Icon(Icons.Default.FilterList, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("Filter")
+                            }
+                            Spacer(modifier = Modifier.width(8.dp))
+                            OutlinedButton(onClick = { pendingSort = sortOption; pendingStartDate = customStartDate; pendingEndDate = customEndDate; showSortSheet = true }, contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)) {
+                                Icon(Icons.Default.KeyboardArrowDown, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("Sort")
                             }
                         }
 
-                        if (filteredVouchers.isEmpty()) {
+                        if (displayedVouchers.isEmpty()) {
                             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                                 Text("No vouchers found.", color = AppColors.textSecondary)
                             }
@@ -437,23 +634,25 @@ fun VouchersScreen(
                                 verticalArrangement = Arrangement.spacedBy(8.dp),
                                 modifier = Modifier.fillMaxSize()
                             ) {
-                                items(filteredVouchers) { voucher ->
+                                items(displayedVouchers) { voucher ->
                                     val partyName = parties.find { it.id == voucher.partyId }?.name ?: "Cash / Bank Account"
                                     val isSelected = selectedVoucherId == voucher.id
                                     Card(
                                         modifier = Modifier
                                             .fillMaxWidth()
+                                            .shadow(6.dp, RoundedCornerShape(16.dp))
                                             .border(
                                                 1.dp,
-                                                if (isSelected) AppColors.primary else AppColors.border,
+                                                if (isSelected) AppColors.primary else AppColors.border.copy(alpha = 0.7f),
                                                 RoundedCornerShape(16.dp)
                                             )
                                             .premiumClickable { selectedVoucherId = voucher.id },
                                         colors = CardDefaults.cardColors(
-                                            containerColor = if (isSelected) AppColors.primary.copy(alpha = 0.08f) else AppColors.cardBg
-                                        )
+                                            containerColor = if (isSelected) AppColors.primary.copy(alpha = 0.06f) else AppColors.cardBg
+                                        ),
+                                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                                     ) {
-                                        Column(modifier = Modifier.padding(12.dp)) {
+                                        Column(modifier = Modifier.padding(14.dp)) {
                                             Row(
                                                 modifier = Modifier.fillMaxWidth(),
                                                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -463,39 +662,33 @@ fun VouchersScreen(
                                                     text = voucher.voucherNo,
                                                     fontWeight = FontWeight.Bold,
                                                     fontSize = 12.sp,
-                                                    color = Color(0xFF1A1A1A)
+                                                    color = Color(0xFF111827)
                                                 )
-                                                val badgeColor = when (voucher.type) {
-                                                    "SALE" -> Color(0xFF1A73E8)
-                                                    "PURCHASE" -> Color(0xFF6F42C1)
-                                                    "RECEIPT" -> Color(0xFF28A745)
-                                                    "PAYMENT" -> Color(0xFFDC3545)
-                                                    else -> Color.Gray
-                                                }
                                                 Card(
-                                                    colors = CardDefaults.cardColors(containerColor = badgeColor.copy(alpha = 0.15f)),
-                                                    shape = RoundedCornerShape(4.dp)
+                                                    colors = CardDefaults.cardColors(containerColor = AppColors.primary.copy(alpha = 0.12f)),
+                                                    shape = RoundedCornerShape(8.dp)
                                                 ) {
                                                     Text(
-                                                        text = voucher.type,
-                                                        color = badgeColor,
+                                                        text = voucherTypeLabel(voucher.type),
+                                                        color = AppColors.primary,
                                                         fontSize = 9.sp,
-                                                        fontWeight = FontWeight.Bold,
-                                                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                                                        fontWeight = FontWeight.SemiBold,
+                                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                                                     )
                                                 }
                                             }
-                                            Spacer(modifier = Modifier.height(2.dp))
+                                            Spacer(modifier = Modifier.height(4.dp))
                                             Text(
                                                 text = partyName,
                                                 fontSize = 11.sp,
                                                 fontWeight = FontWeight.Medium,
-                                                color = Color(0xFF333333)
+                                                color = Color(0xFF374151)
                                             )
-                                            Spacer(modifier = Modifier.height(4.dp))
+                                            Spacer(modifier = Modifier.height(6.dp))
                                             Row(
                                                 modifier = Modifier.fillMaxWidth(),
-                                                horizontalArrangement = Arrangement.SpaceBetween
+                                                horizontalArrangement = Arrangement.SpaceBetween,
+                                                verticalAlignment = Alignment.CenterVertically
                                             ) {
                                                 Text(
                                                     text = Utils.formatDate(voucher.date),
@@ -506,7 +699,7 @@ fun VouchersScreen(
                                                     text = Utils.formatIndianCurrency(voucher.netAmount),
                                                     fontWeight = FontWeight.Bold,
                                                     fontSize = 12.sp,
-                                                    color = Color(0xFF161616)
+                                                    color = Color(0xFF111827)
                                                 )
                                             }
                                         }
@@ -581,23 +774,21 @@ fun VouchersScreen(
                     modifier = Modifier.fillMaxWidth().testTag("voucher_search_bar")
                 )
 
-                // Quick Type Filters Row
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    val filters = listOf("ALL", "SALE", "PURCHASE", "RECEIPT", "PAYMENT")
-                    filters.forEach { filter ->
-                        FilterChip(
-                            selected = selectedTypeFilter == filter,
-                            onClick = { selectedTypeFilter = filter },
-                            label = { Text(filter, fontSize = 11.sp) },
-                            shape = RoundedCornerShape(4.dp),
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = AppColors.primary,
-                                selectedLabelColor = AppColors.textOnPrimary
-                            )
-                        )
+                    OutlinedButton(onClick = { pendingFilter = selectedTypeFilter; showFilterSheet = true }, contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)) {
+                        Icon(Icons.Default.FilterList, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Filter")
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    OutlinedButton(onClick = { pendingSort = sortOption; pendingStartDate = customStartDate; pendingEndDate = customEndDate; showSortSheet = true }, contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)) {
+                        Icon(Icons.Default.KeyboardArrowDown, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Sort")
                     }
                 }
 
@@ -626,7 +817,7 @@ fun VouchersScreen(
                             )
                         }
                     }
-                } else if (filteredVouchers.isEmpty()) {
+                } else if (displayedVouchers.isEmpty()) {
                     Box(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
@@ -647,17 +838,19 @@ fun VouchersScreen(
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                         modifier = Modifier.fillMaxSize()
                     ) {
-                        items(filteredVouchers) { voucher ->
+                        items(displayedVouchers) { voucher ->
                             val partyName = parties.find { it.id == voucher.partyId }?.name ?: "Cash / Bank Account"
-                            
+
                             Card(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .border(1.dp, AppColors.border, RoundedCornerShape(16.dp))
-                                    .clickable { navigateToInvoice(voucher.id) },
-                                colors = CardDefaults.cardColors(containerColor = AppColors.cardBg)
+                                    .shadow(6.dp, RoundedCornerShape(16.dp))
+                                    .border(1.dp, AppColors.border.copy(alpha = 0.7f), RoundedCornerShape(16.dp))
+                                    .premiumClickable { navigateToNewVoucher(voucher.id) },
+                                colors = CardDefaults.cardColors(containerColor = AppColors.cardBg),
+                                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                             ) {
-                                Column(modifier = Modifier.padding(12.dp)) {
+                                Column(modifier = Modifier.padding(14.dp)) {
                                     Row(
                                         modifier = Modifier.fillMaxWidth(),
                                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -667,25 +860,17 @@ fun VouchersScreen(
                                             text = voucher.voucherNo,
                                             fontWeight = FontWeight.Bold,
                                             fontSize = 14.sp,
-                                            color = Color(0xFF1A1A1A)
+                                            color = Color(0xFF111827)
                                         )
-                                        // Colored Badge
-                                        val badgeColor = when (voucher.type) {
-                                            "SALE" -> Color(0xFF1A73E8)
-                                            "PURCHASE" -> Color(0xFF6F42C1)
-                                            "RECEIPT" -> Color(0xFF28A745)
-                                            "PAYMENT" -> Color(0xFFDC3545)
-                                            else -> Color.Gray
-                                        }
                                         Card(
-                                            colors = CardDefaults.cardColors(containerColor = badgeColor.copy(alpha = 0.15f)),
-                                            shape = RoundedCornerShape(4.dp)
+                                            colors = CardDefaults.cardColors(containerColor = AppColors.primary.copy(alpha = 0.12f)),
+                                            shape = RoundedCornerShape(8.dp)
                                         ) {
                                             Text(
-                                                text = voucher.type,
-                                                color = badgeColor,
+                                                text = voucherTypeLabel(voucher.type),
+                                                color = AppColors.primary,
                                                 fontSize = 10.sp,
-                                                fontWeight = FontWeight.Bold,
+                                                fontWeight = FontWeight.SemiBold,
                                                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                                             )
                                         }
@@ -695,12 +880,13 @@ fun VouchersScreen(
                                         text = partyName,
                                         fontSize = 13.sp,
                                         fontWeight = FontWeight.Medium,
-                                        color = Color(0xFF333333)
+                                        color = Color(0xFF374151)
                                     )
                                     Spacer(modifier = Modifier.height(6.dp))
                                     Row(
                                         modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.SpaceBetween
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
                                     ) {
                                         Text(
                                             text = Utils.formatDate(voucher.date),
@@ -711,7 +897,7 @@ fun VouchersScreen(
                                             text = Utils.formatIndianCurrency(voucher.netAmount),
                                             fontWeight = FontWeight.Bold,
                                             fontSize = 14.sp,
-                                            color = Color(0xFF161616)
+                                            color = Color(0xFF111827)
                                         )
                                     }
                                 }
@@ -1490,25 +1676,10 @@ fun NewVoucherScreen(
                     .padding(innerPadding)
                     .padding(16.dp)
             ) {
-                val voucherTypes = listOf(
-                    VoucherTypeCardData("SALE", "Sale Invoice", "Record a sale to customer", Icons.AutoMirrored.Filled.ReceiptLong, Color(0xFF2563EB)),
-                    VoucherTypeCardData("PURCHASE", "Purchase Invoice", "Record purchase from supplier", Icons.Default.Store, Color(0xFF7C3AED)),
-                    VoucherTypeCardData("SALE_RETURN", "Sales Return", "Customer returns goods", Icons.Default.SwapHoriz, Color(0xFFEA580C)),
-                    VoucherTypeCardData("PURCHASE_RETURN", "Purchase Return", "Return goods to supplier", Icons.Default.SwapHoriz, Color(0xFFB91C1C)),
-                    VoucherTypeCardData("RECEIPT", "Receipt", "Receive payment from customer", Icons.Default.Payments, Color(0xFF059669)),
-                    VoucherTypeCardData("PAYMENT", "Payment", "Pay a supplier or expense", Icons.Default.CreditCard, Color(0xFFDC2626)),
-                    VoucherTypeCardData("DEBIT_NOTE", "Debit Note", "Raise debit against party", Icons.Default.Description, Color(0xFF9333EA)),
-                    VoucherTypeCardData("CREDIT_NOTE", "Credit Note", "Issue credit to party", Icons.Default.Description, Color(0xFF1D4ED8)),
-                    VoucherTypeCardData("BILLS_RECEIVABLE", "Bills Receivable", "View amounts owed to you", Icons.AutoMirrored.Filled.ReceiptLong, Color(0xFF0F766E)),
-                    VoucherTypeCardData("BILLS_PAYABLE", "Bills Payable", "View amounts you owe", Icons.AutoMirrored.Filled.ReceiptLong, Color(0xFF92400E)),
-                    VoucherTypeCardData("QUOTATION", "Quotation / Estimate", "Create estimate or quote", Icons.Default.RequestQuote, Color(0xFF4F46E5)),
-                    VoucherTypeCardData("DELIVERY_CHALLAN", "Delivery Challan", "Record goods dispatch", Icons.Default.LocalShipping, Color(0xFF0891B2)),
-                    VoucherTypeCardData("EXPENSE", "Expense Entry", "Record a business expense", Icons.Default.Inventory2, Color(0xFFBE185D)),
-                    VoucherTypeCardData("JOURNAL", "Journal Entry", "Manual accounting entry", Icons.Outlined.Edit, Color(0xFF334155))
-                )
+                val voucherTypes = voucherTypeCards()
 
                 LazyVerticalGrid(
-                    columns = GridCells.Fixed(2),
+                    columns = GridCells.Fixed(if (isTablet) 2 else 1),
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(bottom = 24.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -1519,14 +1690,20 @@ fun NewVoucherScreen(
                         Card(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(100.dp)
+                                .height(110.dp)
                                 .clickable {
-                                    selectedType = type.key
-                                    formStep = 1
-                                    step = 2
+                                    if (type.key == "INCOME") {
+                                        // intentionally no navigation; visual tap feedback only
+                                    } else {
+                                        selectedType = type.key
+                                        formStep = 1
+                                        step = 2
+                                    }
                                 }
-                                .border(1.dp, type.accent, RoundedCornerShape(12.dp)),
-                            colors = CardDefaults.cardColors(containerColor = Color.White)
+                                .shadow(4.dp, RoundedCornerShape(16.dp))
+                                .border(1.dp, type.accent.copy(alpha = 0.22f), RoundedCornerShape(16.dp)),
+                            colors = CardDefaults.cardColors(containerColor = Color.White),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
                         ) {
                             Column(
                                 modifier = Modifier
@@ -1535,11 +1712,18 @@ fun NewVoucherScreen(
                                 horizontalAlignment = Alignment.CenterHorizontally,
                                 verticalArrangement = Arrangement.Center
                             ) {
-                                Icon(type.icon, contentDescription = null, tint = type.accent)
+                                Box(
+                                    modifier = Modifier
+                                        .size(38.dp)
+                                        .background(type.accent.copy(alpha = 0.12f), RoundedCornerShape(12.dp)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(type.icon, contentDescription = null, tint = type.accent)
+                                }
                                 Spacer(modifier = Modifier.height(6.dp))
                                 Text(type.title, fontWeight = FontWeight.Bold, fontSize = 13.sp, color = Color(0xFF0F172A))
                                 Spacer(modifier = Modifier.height(4.dp))
-                                Text(type.description, fontSize = 10.sp, color = Color.Gray)
+                                Text(type.description, fontSize = 10.sp, color = Color.Gray, textAlign = TextAlign.Center)
                             }
                         }
                     }
