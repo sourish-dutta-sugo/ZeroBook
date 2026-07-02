@@ -219,23 +219,24 @@ fun DashboardScreen(
         selectedAnalyticsCard = null
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(AppColors.screenBg)
-            .verticalScroll(scrollState)
-            .imePadding()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp)
-    ) {
-        // High Density Header Row
-        Row(
+    Box(modifier = Modifier.fillMaxSize()) {
+        Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 8.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.Top
+                .fillMaxSize()
+                .background(AppColors.screenBg)
+                .verticalScroll(scrollState)
+                .imePadding()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
+            // High Density Header Row
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Top
+            ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -720,8 +721,12 @@ fun DashboardScreen(
             }
 
             Card(
-                modifier = Modifier.fillMaxWidth().border(1.dp, Color(0xFFE8E8E8), RoundedCornerShape(16.dp)),
-                colors = CardDefaults.cardColors(containerColor = AppColors.cardBg)
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .shadow(elevation = 6.dp, shape = RoundedCornerShape(18.dp), clip = false),
+                shape = RoundedCornerShape(18.dp),
+                colors = CardDefaults.cardColors(containerColor = AppColors.cardBg),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
             ) {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Row(
@@ -837,13 +842,17 @@ fun DashboardScreen(
                             }
                         }
                     }
-                    TextButton(onClick = { onQuickAction("TRANSACTIONS") }, modifier = Modifier.align(Alignment.CenterHorizontally)) {
+                    TextButton(
+                        onClick = { onQuickAction("VOUCHERS") },
+                        modifier = Modifier.align(Alignment.CenterHorizontally)
+                    ) {
                         Text("View All Transactions")
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.height(32.dp))
+                Spacer(modifier = Modifier.height(32.dp))
+            }
         }
     }
 

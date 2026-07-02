@@ -276,6 +276,7 @@ private fun AppContent(
 ) {
     val context = LocalContext.current
     val isSetupCompleted by viewModel.isSetupCompleted.collectAsState()
+    val setupStatusResolved by viewModel.setupStatusResolved.collectAsState()
     var showSplash by remember { mutableStateOf(true) }
 
     Crossfade(targetState = showSplash, animationSpec = tween(durationMillis = 240, easing = FastOutSlowInEasing)) { isSplash ->
@@ -309,6 +310,26 @@ private fun AppContent(
             }
 
             when {
+                !setupStatusResolved -> {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(AppColors.screenBg),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            CircularProgressIndicator(color = Color(0xFF1A73E8))
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Text(
+                                text = "Preparing ZeroBook...",
+                                fontSize = 14.sp,
+                                color = Color(0xFF1A1A1A),
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    }
+                }
+
                 !isSetupCompleted -> {
                     SetupScreen(
                         viewModel = viewModel,
@@ -327,8 +348,6 @@ private fun AppContent(
                     val navController = rememberNavController()
                     val navBackStackEntry by navController.currentBackStackEntryAsState()
                     val currentDestination = navBackStackEntry?.destination
-                    val currentRoute = currentDestination?.route
-                    var navigationLocked by remember { mutableStateOf(false) }
                     val isTopLevel = topLevelDestinations.any { destination ->
                         currentDestination?.hierarchy?.any { it.route == destination.route } == true
                     }
@@ -352,15 +371,10 @@ private fun AppContent(
                                         val selected = currentDestination?.hierarchy?.any { it.route == destination.route } == true
                                         NavigationBarItem(
                                             selected = selected,
-                                            enabled = !navigationLocked,
+                                            enabled = !selected,
                                             onClick = {
-                                                if (navigationLocked || selected) return@NavigationBarItem
-                                                navigationLocked = true
+                                                if (selected) return@NavigationBarItem
                                                 navController.navigateToTopLevel(destination.route)
-                                                uiScope.launch {
-                                                    delay(220)
-                                                    navigationLocked = false
-                                                }
                                             },
                                             icon = {
                                                 PremiumBottomNavContent(
@@ -370,6 +384,7 @@ private fun AppContent(
                                                 )
                                             },
                                             label = {},
+                                            alwaysShowLabel = false,
                                             colors = NavigationBarItemDefaults.colors(
                                                 selectedIconColor = AppColors.primary,
                                                 unselectedIconColor = AppColors.textTertiary,
@@ -450,172 +465,6 @@ private fun AppContent(
             }
         }
     }
-
-    val sharedPreferences = remember {
-        context.getSharedPreferences("zerobook_pref", Context.MODE_PRIVATE)
-    }
-    var pinRequired by remember {
-        mutableStateOf(sharedPreferences.getBoolean("pin_enabled", false))
-    }
-    var pinAuthed by remember { mutableStateOf(false) }
-    var changelogData by remember { mutableStateOf<ChangelogData?>(null) }
-    var showChangelog by remember { mutableStateOf(false) }
-    val uiScope = rememberCoroutineScope()
-
-    LaunchedEffect(isSetupCompleted, pinRequired, pinAuthed) {
-        if (isSetupCompleted && (!pinRequired || pinAuthed)) {
-            viewModel.autoAdvanceFinancialYearIfNeeded(context)?.let { updatedFy ->
-                Toast.makeText(context, "Financial year updated to FY $updatedFy", Toast.LENGTH_LONG).show()
-            }
-            val loadedChangelog = ChangelogLoader.load(context)
-            val lastSeenVersion = AppPreferences.getLastSeenChangelogVersion(context)
-            if (loadedChangelog != null && (lastSeenVersion == null || lastSeenVersion != loadedChangelog.version)) {
-                changelogData = loadedChangelog
-                showChangelog = true
-            }
-            pinRequired = sharedPreferences.getBoolean("pin_enabled", false)
-        }
-    }
-
-    when {
-        !isSetupCompleted -> {
-            SetupScreen(
-                viewModel = viewModel,
-                onSetupComplete = {}
-            )
-        }
-
-        pinRequired && !pinAuthed -> {
-            PinLockScreen(
-                correctPin = sharedPreferences.getString("lock_pin", "1234") ?: "1234",
-                onAuthentic = { pinAuthed = true }
-            )
-        }
-
-        else -> {
-            val navController = rememberNavController()
-            val navBackStackEntry by navController.currentBackStackEntryAsState()
-            val currentDestination = navBackStackEntry?.destination
-            val currentRoute = currentDestination?.route
-            var navigationLocked by remember { mutableStateOf(false) }
-            val isTopLevel = topLevelDestinations.any { destination ->
-                currentDestination?.hierarchy?.any { it.route == destination.route } == true
-            }
-
-            Scaffold(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .statusBarsPadding()
-                    .navigationBarsPadding(),
-                containerColor = AppColors.screenBg,
-                bottomBar = {
-                    if (isTopLevel) {
-                        NavigationBar(
-                            containerColor = AppColors.cardBg,
-                            tonalElevation = 6.dp,
-                            modifier = Modifier
-                                .navigationBarsPadding()
-                                .height(72.dp)
-                        ) {
-                            topLevelDestinations.forEach { destination ->
-                                val selected = currentDestination?.hierarchy?.any { it.route == destination.route } == true
-                                NavigationBarItem(
-                                    selected = selected,
-                                    enabled = !navigationLocked,
-                                    onClick = {
-                                        if (navigationLocked || selected) return@NavigationBarItem
-                                        navigationLocked = true
-                                        navController.navigateToTopLevel(destination.route)
-                                        uiScope.launch {
-                                            delay(220)
-                                            navigationLocked = false
-                                        }
-                                    },
-                                    icon = {
-                                        PremiumBottomNavContent(
-                                            selected = selected,
-                                            icon = destination.icon,
-                                            label = destination.label
-                                        )
-                                    },
-                                    label = {},
-                                    colors = NavigationBarItemDefaults.colors(
-                                        selectedIconColor = AppColors.primary,
-                                        unselectedIconColor = AppColors.textTertiary,
-                                        selectedTextColor = AppColors.primary,
-                                        unselectedTextColor = AppColors.textTertiary,
-                                        indicatorColor = AppColors.primary.copy(alpha = 0.12f)
-                                    )
-                                )
-                            }
-                        }
-                    }
-                }
-            ) { innerPadding ->
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(innerPadding)
-                ) {
-                    ZeroBookNavHost(
-                        navController = navController,
-                        viewModel = viewModel,
-                        themeViewModel = themeViewModel,
-                        dashboardViewModel = dashboardViewModel
-                    )
-                }
-            }
-
-            if (showChangelog && changelogData != null) {
-                val configuration = LocalConfiguration.current
-                androidx.compose.animation.AnimatedVisibility(
-                    visible = showChangelog,
-                    enter = premiumDialogEnter(),
-                    exit = premiumDialogExit()
-                ) {
-                    androidx.compose.material3.AlertDialog(
-                        onDismissRequest = {},
-                        confirmButton = {
-                            Button(
-                                onClick = {
-                                    val version = changelogData?.version.orEmpty()
-                                    if (version.isNotBlank()) {
-                                        uiScope.launch {
-                                            AppPreferences.setLastSeenChangelogVersion(context, version)
-                                            showChangelog = false
-                                        }
-                                    } else {
-                                        showChangelog = false
-                                    }
-                                }
-                            ) {
-                                Text("Got it")
-                            }
-                        },
-                        title = {
-                            Text("What's New in ZeroBook ${changelogData?.version.orEmpty()}")
-                        },
-                        text = {
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .heightIn(max = configuration.screenHeightDp.dp * 0.6f)
-                                    .verticalScroll(rememberScrollState()),
-                                verticalArrangement = Arrangement.spacedBy(10.dp)
-                            ) {
-                                changelogData?.changes?.forEach { change ->
-                                    Text("• $change", color = Color(0xFF111827))
-                                }
-                            }
-                        },
-                        containerColor = Color.White,
-                        textContentColor = Color(0xFF111827),
-                        titleContentColor = Color(0xFF111827)
-                    )
-                }
-            }
-        }
-    }
 }
 
 @Composable
@@ -646,6 +495,7 @@ private fun ZeroBookNavHost(
                         "QUICK_SALE" -> navController.navigate(Routes.QuickSale)
                         "EXPENSES" -> navController.navigate(Routes.Expenses)
                         "PARTY" -> navController.navigateToTopLevel(Routes.Parties)
+                        "VOUCHERS" -> navController.navigateToTopLevel(Routes.Vouchers)
                     }
                 }
             )

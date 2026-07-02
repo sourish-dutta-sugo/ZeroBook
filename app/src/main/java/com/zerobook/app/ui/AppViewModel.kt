@@ -71,6 +71,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     val expenses: StateFlow<List<Expense>>
 
     val isSetupCompleted = MutableStateFlow(false)
+    val setupStatusResolved = MutableStateFlow(false)
     val financialYear = MutableStateFlow(FinancialYearUtils.currentFinancialYearCode())
     val voucherPrefillRequest = MutableStateFlow<VoucherPrefillRequest?>(null)
 
@@ -161,6 +162,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
             viewModelScope.launch {
                 repository.profile.collect { prof ->
+                    setupStatusResolved.value = true
                     isSetupCompleted.value = prof != null
                     val resolvedFy = prof?.fyLabel?.takeIf { it.isNotBlank() } ?: FinancialYearUtils.currentFinancialYearCode()
                     financialYear.value = resolvedFy
@@ -192,6 +194,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             repository.insertProfile(profile.copy(fyLabel = financialYear.value))
             syncBusinessProfileTerms(profile.termsAndConditions)
+            setupStatusResolved.value = true
             isSetupCompleted.value = true
             onSuccess()
         }
@@ -201,6 +204,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             repository.insertProfile(profile)
             syncBusinessProfileTerms(profile.termsAndConditions)
+            setupStatusResolved.value = true
             onSuccess()
         }
     }

@@ -929,11 +929,11 @@ fun NewVoucherScreen(
     val vouchers by viewModel.vouchers.collectAsState()
     val voucherPrefillRequest by viewModel.voucherPrefillRequest.collectAsState()
     val context = androidx.compose.ui.platform.LocalContext.current
+    val screenWidthDp = LocalConfiguration.current.screenWidthDp
+    val isTablet = screenWidthDp >= 600
 
     val coroutineScope = rememberCoroutineScope()
     val isEditMode = !voucherId.isNullOrBlank()
-    val screenWidthDp = LocalConfiguration.current.screenWidthDp
-    val isTablet = screenWidthDp >= 600
     
     var step by remember { mutableStateOf(voucherId?.let { 2 } ?: 1) } // 1: Type selection, 2: Form & Line items
     var formStep by remember { mutableStateOf(1) }

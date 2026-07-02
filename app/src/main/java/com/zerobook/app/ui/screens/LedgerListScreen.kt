@@ -45,6 +45,7 @@ fun LedgerListScreen(
     val groupedAccounts = remember(ledgerAccounts) {
         ledgerAccounts.groupBy { it.groupName }.toSortedMap()
     }
+    val showEmptyState = remember(ledgerAccounts) { ledgerAccounts.isEmpty() }
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -84,7 +85,7 @@ fun LedgerListScreen(
                 modifier = Modifier.padding(bottom = 12.dp)
             )
 
-            if (ledgerAccounts.isEmpty()) {
+            if (showEmptyState) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Text("No ledger accounts configured yet.", color = AppColors.textSecondary)
                 }

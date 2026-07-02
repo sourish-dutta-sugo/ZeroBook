@@ -77,6 +77,7 @@ import com.zerobook.app.ui.animation.premiumCombinedClickable
 import com.zerobook.app.ui.animation.premiumFabEntrance
 import com.zerobook.app.ui.animation.pressScale
 import com.zerobook.app.ui.theme.AppColors
+import java.util.Locale
 import java.util.UUID
 
 enum class ProductSheetMode { ADD, EDIT }
@@ -141,11 +142,11 @@ fun ProductsScreen(
     var selectedProduct by remember { mutableStateOf<Product?>(null) }
     var actionProduct by remember { mutableStateOf<Product?>(null) }
 
-    val filteredProducts = remember(products, searchQuery) {
+    val normalizedQuery = remember(searchQuery) { searchQuery.trim().lowercase(Locale.US) }
+    val filteredProducts = remember(products, normalizedQuery) {
         products.filter { product ->
-            product.name.contains(searchQuery, ignoreCase = true) ||
-                product.hsnCode.contains(searchQuery, ignoreCase = true) ||
-                product.barcodeValue.contains(searchQuery, ignoreCase = true)
+            val haystack = "${product.name} ${product.hsnCode} ${product.barcodeValue}".lowercase(Locale.US)
+            normalizedQuery.isEmpty() || haystack.contains(normalizedQuery)
         }
     }
 

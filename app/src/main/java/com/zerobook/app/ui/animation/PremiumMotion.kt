@@ -26,6 +26,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Icon
@@ -43,10 +44,11 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.zerobook.app.ui.theme.AppColors
 
-private const val PressedScale = 0.965f
-private const val PressedOffsetDp = 1f
-private const val SelectedNavScale = 1.04f
+private const val PressedScale = 0.97f
+private const val PressedOffsetDp = 0.75f
+private const val SelectedNavScale = 1.02f
 
 private data class PremiumMotionPrefs(
     val reducedMotion: Boolean = false,
@@ -82,7 +84,7 @@ val PremiumNavSpringSpec = spring<Float>(
 )
 
 val PremiumFadeSpec = tween<Float>(
-    durationMillis = 220,
+    durationMillis = 120,
     easing = FastOutSlowInEasing
 )
 
@@ -94,42 +96,42 @@ val PremiumOffsetSpringSpec = spring<IntOffset>(
 fun premiumScreenTransition(
     navigatingBack: Boolean
 ): AnimatedContentTransitionScope<*>.() -> ContentTransform = {
-    val enterOffset: (Int) -> Int = { fullWidth -> if (navigatingBack) -(fullWidth / 10) else fullWidth / 10 }
-    val exitOffset: (Int) -> Int = { fullWidth -> if (navigatingBack) fullWidth / 10 else -(fullWidth / 10) }
+    val enterOffset: (Int) -> Int = { fullWidth -> if (navigatingBack) -(fullWidth / 12) else fullWidth / 12 }
+    val exitOffset: (Int) -> Int = { fullWidth -> if (navigatingBack) fullWidth / 12 else -(fullWidth / 12) }
 
     (
         slideInHorizontally(
-            animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing),
+            animationSpec = tween(durationMillis = 90, easing = FastOutSlowInEasing),
             initialOffsetX = enterOffset
         ) +
-            fadeIn(animationSpec = tween(durationMillis = 160, easing = FastOutSlowInEasing), initialAlpha = 0f)
+            fadeIn(animationSpec = tween(durationMillis = 90, easing = FastOutSlowInEasing), initialAlpha = 0.02f)
         ) togetherWith (
         slideOutHorizontally(
-            animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing),
+            animationSpec = tween(durationMillis = 90, easing = FastOutSlowInEasing),
             targetOffsetX = exitOffset
         ) +
-            fadeOut(animationSpec = tween(durationMillis = 160, easing = FastOutSlowInEasing), targetAlpha = 1f)
+            fadeOut(animationSpec = tween(durationMillis = 90, easing = FastOutSlowInEasing), targetAlpha = 1f)
         )
 }
 
 fun premiumEnterTransition(navigatingBack: Boolean): AnimatedContentTransitionScope<*>.() -> EnterTransition = {
     slideInHorizontally(
-        animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing),
+        animationSpec = tween(durationMillis = 90, easing = FastOutSlowInEasing),
         initialOffsetX = { fullWidth ->
-            if (navigatingBack) -(fullWidth / 10) else fullWidth / 10
+            if (navigatingBack) -(fullWidth / 12) else fullWidth / 12
         }
     ) +
-        fadeIn(animationSpec = tween(durationMillis = 160, easing = FastOutSlowInEasing), initialAlpha = 0f)
+        fadeIn(animationSpec = tween(durationMillis = 90, easing = FastOutSlowInEasing), initialAlpha = 0.02f)
 }
 
 fun premiumExitTransition(navigatingBack: Boolean): AnimatedContentTransitionScope<*>.() -> ExitTransition = {
     slideOutHorizontally(
-        animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing),
+        animationSpec = tween(durationMillis = 90, easing = FastOutSlowInEasing),
         targetOffsetX = { fullWidth ->
-            if (navigatingBack) fullWidth / 10 else -(fullWidth / 10)
+            if (navigatingBack) fullWidth / 12 else -(fullWidth / 12)
         }
     ) +
-        fadeOut(animationSpec = tween(durationMillis = 160, easing = FastOutSlowInEasing), targetAlpha = 1f)
+        fadeOut(animationSpec = tween(durationMillis = 90, easing = FastOutSlowInEasing), targetAlpha = 1f)
 }
 
 @Composable
@@ -210,47 +212,33 @@ fun PremiumBottomNavContent(
 ) {
     val scale by animateFloatAsState(
         targetValue = if (selected) SelectedNavScale else 1f,
-        animationSpec = tween(durationMillis = 140, easing = FastOutSlowInEasing),
+        animationSpec = tween(durationMillis = 70, easing = FastOutSlowInEasing),
         label = "bottom_nav_scale"
     )
-    val labelAlpha by animateFloatAsState(
-        targetValue = if (selected) 1f else 0.72f,
-        animationSpec = tween(durationMillis = 120, easing = FastOutSlowInEasing),
-        label = "bottom_nav_alpha"
-    )
-    val iconAlpha by animateFloatAsState(
-        targetValue = if (selected) 1f else 0.78f,
-        animationSpec = tween(durationMillis = 120, easing = FastOutSlowInEasing),
-        label = "bottom_nav_icon_alpha"
-    )
+    val contentColor = if (selected) AppColors.primary else AppColors.textTertiary
 
-    Row(
+    Column(
         modifier = modifier
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
             },
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(6.dp)
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(2.dp)
     ) {
-        Box(
-            modifier = Modifier.graphicsLayer {
-                alpha = iconAlpha
-            }
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = label,
-                modifier = Modifier.size(20.dp)
-            )
-        }
-        if (selected) {
-            Text(
-                text = label,
-                modifier = Modifier.alpha(labelAlpha),
-                fontSize = 11.sp
-            )
-        }
+        Icon(
+            imageVector = icon,
+            contentDescription = label,
+            tint = contentColor,
+            modifier = Modifier.size(20.dp)
+        )
+        Text(
+            text = label,
+            color = contentColor,
+            fontSize = 11.sp,
+            maxLines = 1,
+            softWrap = false
+        )
     }
 }
 
