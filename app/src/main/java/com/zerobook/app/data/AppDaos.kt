@@ -16,6 +16,9 @@ interface BusinessProfileDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertProfile(profile: BusinessProfile)
+
+    @Query("UPDATE business_profile SET terms_and_conditions = :termsAndConditions WHERE id = 1")
+    suspend fun updateTermsAndConditions(termsAndConditions: String)
 }
 
 @Dao
@@ -129,6 +132,60 @@ interface VoucherDao {
 
     @Query("SELECT * FROM vouchers WHERE id = :id LIMIT 1")
     suspend fun getVoucherById(id: String): Voucher?
+
+    @Query(
+        "SELECT COALESCE(NULLIF(partial_amount_paid, 0), 0) AS partialAmountPaid, " +
+        "COALESCE(partial_payment_submode, '') AS partialPaymentSubmode, " +
+        "COALESCE(credit_due_date, '') AS creditDueDate, " +
+        "COALESCE(remaining_credit_amount, 0) AS remainingCreditAmount, " +
+        "COALESCE(is_advance, 0) AS isAdvance, " +
+        "COALESCE(advance_for, '') AS advanceFor, " +
+        "COALESCE(NULLIF(reference_no, ''), '') AS referenceNo, " +
+        "COALESCE(NULLIF(other_references, ''), '') AS otherReferences " +
+        "FROM vouchers WHERE id = :voucherId LIMIT 1"
+    )
+    suspend fun getVoucherSaveExtrasSync(voucherId: String): VoucherSaveExtras?
+
+    @Query(
+        "SELECT COALESCE(NULLIF(reference_no, ''), '') AS referenceNo, " +
+        "COALESCE(NULLIF(other_references, ''), '') AS otherReferences " +
+        "FROM vouchers WHERE id = :voucherId LIMIT 1"
+    )
+    suspend fun getVoucherReferenceFields(voucherId: String): VoucherReferenceFields?
+
+    @Query(
+        "UPDATE vouchers SET payment_mode = :paymentMode, " +
+        "partial_amount_paid = :partialAmountPaid, " +
+        "partial_payment_submode = :partialPaymentSubmode, " +
+        "credit_due_date = :creditDueDate, " +
+        "remaining_credit_amount = :remainingCreditAmount, " +
+        "is_advance = :isAdvance, " +
+        "advance_for = :advanceFor, " +
+        "reference_no = :referenceNo, " +
+        "other_references = :otherReferences " +
+        "WHERE id = :voucherId"
+    )
+    suspend fun updateVoucherExtras(
+        voucherId: String,
+        paymentMode: String,
+        partialAmountPaid: Double,
+        partialPaymentSubmode: String,
+        creditDueDate: String,
+        remainingCreditAmount: Double,
+        isAdvance: Boolean,
+        advanceFor: String,
+        referenceNo: String,
+        otherReferences: String
+    )
+
+    @Query(
+        "UPDATE vouchers SET reference_no = :referenceNo, other_references = :otherReferences WHERE id = :voucherId"
+    )
+    suspend fun updateVoucherReferenceFields(
+        voucherId: String,
+        referenceNo: String,
+        otherReferences: String
+    )
 
     @Query("SELECT * FROM vouchers WHERE type = :type AND financialYearCode = :financialYearCode ORDER BY date DESC, createdAt DESC")
     fun getVouchersByType(type: String, financialYearCode: String): Flow<List<Voucher>>
@@ -311,6 +368,11 @@ interface FinancialYearAuditLogDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertLog(log: FinancialYearAuditLog)
 }
+
+data class VoucherReferenceFields(
+    val referenceNo: String = "",
+    val otherReferences: String = ""
+)
 
 @Dao
 interface ExpenseDao {

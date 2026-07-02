@@ -52,6 +52,7 @@ data class BusinessProfile(
     val showAmountInWords: Boolean = true,
     val showTaxAmountInWords: Boolean = true,
     val fyLabel: String = FinancialYearUtils.currentFinancialYearCode(),
+    @ColumnInfo(name = "terms_and_conditions")
     val termsAndConditions: String = DEFAULT_TERMS_AND_CONDITIONS,
     @ColumnInfo(name = "smtp_email")
     val smtpEmail: String = "",
@@ -146,6 +147,7 @@ data class Voucher(
     val igst: Double,
     val roundOff: Double,
     val netAmount: Double,
+    @ColumnInfo(name = "payment_mode")
     val paymentMode: String, // "CASH", "BANK", "CHEQUE", "UPI"
     val chequeNo: String?,
     val chequeDate: Long?,
@@ -169,7 +171,22 @@ data class Voucher(
     val termsOfDelivery: String = "",
     val buyerOrderNo: String = "",
     val buyerOrderDate: Long = 0,
+    @ColumnInfo(name = "reference_no")
     val referenceNo: String = "",
+    @ColumnInfo(name = "partial_amount_paid")
+    val partialAmountPaid: Double = 0.0,
+    @ColumnInfo(name = "partial_payment_submode")
+    val partialPaymentSubmode: String = "",
+    @ColumnInfo(name = "credit_due_date")
+    val creditDueDate: String = "",
+    @ColumnInfo(name = "remaining_credit_amount")
+    val remainingCreditAmount: Double = 0.0,
+    @ColumnInfo(name = "is_advance")
+    val isAdvance: Boolean = false,
+    @ColumnInfo(name = "advance_for")
+    val advanceFor: String = "",
+    @ColumnInfo(name = "other_references")
+    val otherReferences: String = "",
     val status: String, // "DRAFT", "POSTED"
     val receiptImagePath: String? = null,
     val attachmentPath: String? = null,

@@ -1,16 +1,14 @@
 package com.zerobook.app.data
 
-import android.content.Context
 import androidx.room.withTransaction
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.map
+import org.json.JSONObject
 import java.text.SimpleDateFormat
 import java.util.Locale
 import java.util.UUID
-import androidx.sqlite.db.SimpleSQLiteQuery
-import org.json.JSONObject
 
 class AppRepository(private val db: AppDatabase) {
     data class FinancialYearCloseResult(
@@ -141,32 +139,40 @@ class AppRepository(private val db: AppDatabase) {
     suspend fun getProductById(id: String) = db.productDao().getProductById(id)
 
     suspend fun getVoucherSaveExtras(voucherId: String): VoucherSaveExtras {
-        val cursor = db.openHelper.readableDatabase.query(
-            """
-            SELECT COALESCE(partial_amount_paid, 0),
-                   COALESCE(partial_payment_submode, ''),
-                   COALESCE(credit_due_date, ''),
-                   COALESCE(remaining_credit_amount, 0),
-                   COALESCE(is_advance, 0),
-                   COALESCE(advance_for, '')
-            FROM vouchers WHERE id = ?
-            """.trimIndent(),
-            arrayOf(voucherId)
+        return db.voucherDao().getVoucherSaveExtrasSync(voucherId) ?: VoucherSaveExtras()
+    }
+
+    suspend fun getVoucherReferenceFields(voucherId: String): Pair<String, String> {
+        return db.voucherDao().getVoucherReferenceFields(voucherId)?.let {
+            it.referenceNo to it.otherReferences
+        } ?: ("" to "")
+    }
+
+    suspend fun updateVoucherExtras(voucherId: String, paymentMode: String, extras: VoucherSaveExtras) {
+        db.voucherDao().updateVoucherExtras(
+            voucherId = voucherId,
+            paymentMode = paymentMode,
+            partialAmountPaid = extras.partialAmountPaid,
+            partialPaymentSubmode = extras.partialPaymentSubmode,
+            creditDueDate = extras.creditDueDate,
+            remainingCreditAmount = extras.remainingCreditAmount,
+            isAdvance = extras.isAdvance,
+            advanceFor = extras.advanceFor,
+            referenceNo = extras.referenceNo,
+            otherReferences = extras.otherReferences
         )
-        cursor.use {
-            return if (it.moveToFirst()) {
-                VoucherSaveExtras(
-                    partialAmountPaid = it.getDouble(0),
-                    partialPaymentSubmode = it.getString(1).orEmpty(),
-                    creditDueDate = it.getString(2).orEmpty(),
-                    remainingCreditAmount = it.getDouble(3),
-                    isAdvance = it.getInt(4) == 1,
-                    advanceFor = it.getString(5).orEmpty()
-                )
-            } else {
-                VoucherSaveExtras()
-            }
-        }
+    }
+
+    suspend fun updateVoucherReferenceFields(voucherId: String, referenceNo: String, otherReferences: String) {
+        db.voucherDao().updateVoucherReferenceFields(
+            voucherId = voucherId,
+            referenceNo = referenceNo,
+            otherReferences = otherReferences
+        )
+    }
+
+    suspend fun updateBusinessProfileTerms(termsAndConditions: String) {
+        db.businessProfileDao().updateTermsAndConditions(termsAndConditions)
     }
 
     // Profile Operations
@@ -299,29 +305,31 @@ class AppRepository(private val db: AppDatabase) {
                     updatedAt = System.currentTimeMillis()
                 )
             )
-            db.openHelper.writableDatabase.execSQL(
-                """
-                UPDATE ledger_accounts
-                SET name = ?,
-                    openingBalance = ?,
-                    balanceType = ?,
-                    gstin = ?,
-                    phone = ?,
-                    email = ?,
-                    address = ?
-                WHERE partyId = ?
-                """.trimIndent(),
-                arrayOf<Any?>(
-                    party.name,
-                    party.openingBalance,
-                    party.balanceType,
-                    party.gstin.orEmpty(),
-                    party.phone,
-                    party.email,
-                    party.address,
-                    party.id
-                )
+            val existingAct = db.ledgerAccountDao().getLedgerAccountByPartyId(party.id)
+            val updatedAct = existingAct?.copy(
+                name = party.name,
+                groupName = if (party.type == "CUSTOMER") "Sundry Debtors" else "Sundry Creditors",
+                openingBalance = party.openingBalance,
+                balanceType = party.balanceType,
+                gstin = party.gstin.orEmpty(),
+                phone = party.phone,
+                email = party.email,
+                address = party.address
+            ) ?: LedgerAccount(
+                id = UUID.randomUUID().toString(),
+                name = party.name,
+                groupName = if (party.type == "CUSTOMER") "Sundry Debtors" else "Sundry Creditors",
+                openingBalance = party.openingBalance,
+                balanceType = party.balanceType,
+                isSystem = 0,
+                isParty = 1,
+                partyId = party.id,
+                gstin = party.gstin.orEmpty(),
+                phone = party.phone,
+                email = party.email,
+                address = party.address
             )
+            db.ledgerAccountDao().insertLedgerAccount(updatedAct)
         }
     }
 
@@ -1085,24 +1093,25 @@ class AppRepository(private val db: AppDatabase) {
             if (v != null) {
                 val voucherExtras = getVoucherSaveExtras(v.id)
                 db.voucherDao().insertVoucher(v.copy(outstandingAmount = outstanding))
-                saveVoucherExtras(v.id, v.paymentMode, voucherExtras)
-                db.openHelper.writableDatabase.execSQL(
-                    "UPDATE vouchers SET remaining_credit_amount = ? WHERE id = ?",
-                    arrayOf<Any?>(outstanding, bill.voucherId)
+                updateVoucherExtras(v.id, v.paymentMode, voucherExtras)
+                db.voucherDao().updateVoucherExtras(
+                    voucherId = bill.voucherId,
+                    paymentMode = v.paymentMode,
+                    partialAmountPaid = voucherExtras.partialAmountPaid,
+                    partialPaymentSubmode = voucherExtras.partialPaymentSubmode,
+                    creditDueDate = voucherExtras.creditDueDate,
+                    remainingCreditAmount = outstanding,
+                    isAdvance = voucherExtras.isAdvance,
+                    advanceFor = voucherExtras.advanceFor,
+                    referenceNo = voucherExtras.referenceNo,
+                    otherReferences = voucherExtras.otherReferences
                 )
             }
         }
 
-        val purchaseVoucherIds = mutableListOf<String>()
-        val purchaseCursor = db.openHelper.readableDatabase.query(
-            "SELECT id FROM vouchers WHERE type = ? AND status = ? AND partyId IS NOT NULL",
-            arrayOf("PURCHASE", "POSTED")
-        )
-        purchaseCursor.use { cursor ->
-            while (cursor.moveToNext()) {
-                purchaseVoucherIds += cursor.getString(0)
-            }
-        }
+        val purchaseVoucherIds = db.voucherDao().getAllVouchersForYearSync(FinancialYearUtils.currentFinancialYearCode())
+            .filter { it.type == "PURCHASE" && it.status == "POSTED" && it.partyId != null }
+            .map { it.id }
         for (purchaseVoucherId in purchaseVoucherIds) {
             val purchaseVoucher = db.voucherDao().getVoucherById(purchaseVoucherId) ?: continue
             val allocations = db.receiptAllocationDao().getAllocationsForInvoiceSync(purchaseVoucher.id)
@@ -1111,7 +1120,7 @@ class AppRepository(private val db: AppDatabase) {
             if (purchaseVoucher.outstandingAmount != outstanding) {
                 val voucherExtras = getVoucherSaveExtras(purchaseVoucher.id)
                 db.voucherDao().insertVoucher(purchaseVoucher.copy(outstandingAmount = outstanding))
-                saveVoucherExtras(purchaseVoucher.id, purchaseVoucher.paymentMode, voucherExtras)
+                updateVoucherExtras(purchaseVoucher.id, purchaseVoucher.paymentMode, voucherExtras)
             }
         }
     }
@@ -1191,14 +1200,11 @@ class AppRepository(private val db: AppDatabase) {
         products.forEach { product ->
             val openingStock = openingBalances[product.id]?.openingStock ?: product.openingStock
             val currentStock = (openingStock + (movements[product.id] ?: 0.0)).coerceAtLeast(0.0)
-            db.openHelper.writableDatabase.execSQL(
-                """
-                UPDATE products
-                SET current_stock = ?,
-                    stock_unit = ?
-                WHERE id = ?
-                """.trimIndent(),
-                arrayOf<Any?>(currentStock, product.stockUnit.ifBlank { product.unit }, product.id)
+            db.productDao().insertProduct(
+                product.copy(
+                    currentStock = currentStock,
+                    stockUnit = product.stockUnit.ifBlank { product.unit }
+                )
             )
         }
     }
@@ -1212,56 +1218,20 @@ class AppRepository(private val db: AppDatabase) {
         db.partyDao().getAllPartiesSync().forEach { party ->
             val partySales = saleVouchersByParty[party.id].orEmpty().sortedBy { it.date }
             val totalPurchasesAmount = partySales.sumOf { it.netAmount }
-            db.openHelper.writableDatabase.execSQL(
-                """
-                UPDATE parties
-                SET total_purchases_amount = ?,
-                    total_transactions = ?,
-                    first_transaction_date = ?,
-                    last_transaction_date = ?,
-                    loyalty_points = ?
-                WHERE id = ?
-                """.trimIndent(),
-                arrayOf<Any?>(
-                    totalPurchasesAmount,
-                    partySales.size,
-                    partySales.firstOrNull()?.let { formatter.format(it.date) }.orEmpty(),
-                    partySales.lastOrNull()?.let { formatter.format(it.date) }.orEmpty(),
-                    (totalPurchasesAmount / 100.0).toInt(),
-                    party.id
+            db.partyDao().insertParty(
+                party.copy(
+                    totalPurchasesAmount = totalPurchasesAmount,
+                    totalTransactions = partySales.size,
+                    firstTransactionDate = partySales.firstOrNull()?.let { formatter.format(it.date) }.orEmpty(),
+                    lastTransactionDate = partySales.lastOrNull()?.let { formatter.format(it.date) }.orEmpty(),
+                    loyaltyPoints = (totalPurchasesAmount / 100.0).toInt()
                 )
             )
         }
     }
 
-    private fun saveVoucherExtras(voucherId: String, paymentMode: String, extras: VoucherSaveExtras) {
-        db.openHelper.writableDatabase.execSQL(
-            """
-            UPDATE vouchers
-            SET payment_mode = ?,
-                partial_amount_paid = ?,
-                partial_payment_submode = ?,
-                credit_due_date = ?,
-                remaining_credit_amount = ?,
-                is_advance = ?,
-                advance_for = ?,
-                reference_no = ?,
-                other_references = ?
-            WHERE id = ?
-            """.trimIndent(),
-            arrayOf<Any?>(
-                paymentMode,
-                extras.partialAmountPaid,
-                extras.partialPaymentSubmode,
-                extras.creditDueDate,
-                extras.remainingCreditAmount,
-                if (extras.isAdvance) 1 else 0,
-                extras.advanceFor,
-                extras.referenceNo,
-                extras.otherReferences,
-                voucherId
-            )
-        )
+    private suspend fun saveVoucherExtras(voucherId: String, paymentMode: String, extras: VoucherSaveExtras) {
+        updateVoucherExtras(voucherId, paymentMode, extras)
     }
 
     private fun parseCreditDueDateToMillis(raw: String): Long? {
