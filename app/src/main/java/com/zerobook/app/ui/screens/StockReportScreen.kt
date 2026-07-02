@@ -11,9 +11,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Button
@@ -59,8 +57,7 @@ fun StockReportScreen(products: List<Product>) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(AppColors.screenBg)
-            .verticalScroll(rememberScrollState()),
+            .background(AppColors.screenBg),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -118,11 +115,11 @@ fun StockReportScreen(products: List<Product>) {
         }
 
         LazyColumn(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxSize(),
             verticalArrangement = Arrangement.spacedBy(8.dp),
             contentPadding = PaddingValues(bottom = 120.dp)
         ) {
-            items(filteredProducts) { product ->
+            items(filteredProducts, key = { it.id }) { product ->
                 val statusColor = when {
                     product.currentStock <= 0.0 -> Color(0xFFC62828)
                     product.enableStockAlert && product.currentStock <= product.lowStockThreshold -> Color(0xFFEF6C00)

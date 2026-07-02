@@ -102,15 +102,18 @@ fun DashboardScreen(
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     // Date computation boundaries
-    val calendar = Calendar.getInstance()
-    calendar.set(Calendar.HOUR_OF_DAY, 0)
-    calendar.set(Calendar.MINUTE, 0)
-    calendar.set(Calendar.SECOND, 0)
-    calendar.set(Calendar.MILLISECOND, 0)
-    val todayStart = calendar.timeInMillis
+    val dateBounds = remember {
+        val calendar = Calendar.getInstance()
+        calendar.set(Calendar.HOUR_OF_DAY, 0)
+        calendar.set(Calendar.MINUTE, 0)
+        calendar.set(Calendar.SECOND, 0)
+        calendar.set(Calendar.MILLISECOND, 0)
+        val todayStart = calendar.timeInMillis
 
-    calendar.set(Calendar.DAY_OF_MONTH, 1)
-    val firstDayOfMonth = calendar.timeInMillis
+        calendar.set(Calendar.DAY_OF_MONTH, 1)
+        todayStart to calendar.timeInMillis
+    }
+    val (todayStart, firstDayOfMonth) = dateBounds
 
     // Calculates KPIs
     val todaySales = remember(vouchers) {
@@ -177,36 +180,38 @@ fun DashboardScreen(
         progressTarget = AppPreferences.getProgressTrackerTarget(context).toDoubleOrNull() ?: 200000.0
     }
 
-    val visibleTransactions = remember(vouchers, activeTransactionFilter, activeTransactionSort) {
-        val filtered = when (activeTransactionFilter) {
-            "Sales" -> vouchers.filter { it.type == "SALE" }
-            "Purchase" -> vouchers.filter { it.type == "PURCHASE" }
-            "Receipt" -> vouchers.filter { it.type == "RECEIPT" }
-            "Payment" -> vouchers.filter { it.type == "PAYMENT" }
-            "Income" -> vouchers.filter { it.type == "SALE" || it.type == "RECEIPT" }
-            "Expense" -> vouchers.filter { it.type == "PURCHASE" || it.type == "PAYMENT" }
-            "Receivable" -> vouchers.filter { (it.type == "SALE" || it.type == "RECEIPT") && it.outstandingAmount > 0 }
-            "Payable" -> vouchers.filter { (it.type == "PURCHASE" || it.type == "PAYMENT") && it.outstandingAmount > 0 }
-            "Due" -> vouchers.filter { it.outstandingAmount > 0 }
-            "Cancelled" -> vouchers.filter { it.status == "DRAFT" }
-            "Draft" -> vouchers.filter { it.status == "DRAFT" }
-            "GST Transactions" -> vouchers.filter { it.cgst + it.sgst + it.igst > 0.0 }
-            else -> vouchers
-        }
-        when (activeTransactionSort) {
-            "Oldest First" -> filtered.sortedBy { it.date }
-            "Amount (High → Low)" -> filtered.sortedByDescending { it.netAmount }
-            "Amount (Low → High)" -> filtered.sortedBy { it.netAmount }
-            "Voucher Number (Ascending)" -> filtered.sortedBy { it.voucherNo.ifBlank { it.type } }
-            "Voucher Number (Descending)" -> filtered.sortedByDescending { it.voucherNo.ifBlank { it.type } }
-            "Party Name (A → Z)" -> filtered.sortedBy { it.partyId ?: "Cash" }
-            "Party Name (Z → A)" -> filtered.sortedByDescending { it.partyId ?: "Cash" }
-            else -> filtered.sortedByDescending { it.date }
+    val visibleTransactions by remember(vouchers, activeTransactionFilter, activeTransactionSort) {
+        derivedStateOf {
+            val filtered = when (activeTransactionFilter) {
+                "Sales" -> vouchers.filter { it.type == "SALE" }
+                "Purchase" -> vouchers.filter { it.type == "PURCHASE" }
+                "Receipt" -> vouchers.filter { it.type == "RECEIPT" }
+                "Payment" -> vouchers.filter { it.type == "PAYMENT" }
+                "Income" -> vouchers.filter { it.type == "SALE" || it.type == "RECEIPT" }
+                "Expense" -> vouchers.filter { it.type == "PURCHASE" || it.type == "PAYMENT" }
+                "Receivable" -> vouchers.filter { (it.type == "SALE" || it.type == "RECEIPT") && it.outstandingAmount > 0 }
+                "Payable" -> vouchers.filter { (it.type == "PURCHASE" || it.type == "PAYMENT") && it.outstandingAmount > 0 }
+                "Due" -> vouchers.filter { it.outstandingAmount > 0 }
+                "Cancelled" -> vouchers.filter { it.status == "DRAFT" }
+                "Draft" -> vouchers.filter { it.status == "DRAFT" }
+                "GST Transactions" -> vouchers.filter { it.cgst + it.sgst + it.igst > 0.0 }
+                else -> vouchers
+            }
+            when (activeTransactionSort) {
+                "Oldest First" -> filtered.sortedBy { it.date }
+                "Amount (High → Low)" -> filtered.sortedByDescending { it.netAmount }
+                "Amount (Low → High)" -> filtered.sortedBy { it.netAmount }
+                "Voucher Number (Ascending)" -> filtered.sortedBy { it.voucherNo.ifBlank { it.type } }
+                "Voucher Number (Descending)" -> filtered.sortedByDescending { it.voucherNo.ifBlank { it.type } }
+                "Party Name (A → Z)" -> filtered.sortedBy { it.partyId ?: "Cash" }
+                "Party Name (Z → A)" -> filtered.sortedByDescending { it.partyId ?: "Cash" }
+                else -> filtered.sortedByDescending { it.date }
+            }
         }
     }
 
-    val recentTransactions = remember(visibleTransactions) {
-        visibleTransactions.take(8)
+    val recentTransactions by remember(visibleTransactions) {
+        derivedStateOf { visibleTransactions.take(8) }
     }
 
     val showGstCard = remember(profile) { profile?.gstin?.isNotBlank() == true }
