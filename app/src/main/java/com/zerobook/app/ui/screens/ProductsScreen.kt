@@ -31,6 +31,8 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -57,6 +59,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -76,9 +79,13 @@ import com.zerobook.app.ui.AppViewModel
 import com.zerobook.app.ui.animation.premiumCombinedClickable
 import com.zerobook.app.ui.animation.premiumFabEntrance
 import com.zerobook.app.ui.animation.pressScale
+import com.zerobook.app.ui.selection.UniversalSelectionController
+import com.zerobook.app.ui.selection.UniversalSelectionTopAppBar
+import com.zerobook.app.ui.selection.UniversalSelectionIndicator
 import com.zerobook.app.ui.theme.AppColors
 import java.util.Locale
 import java.util.UUID
+import kotlinx.coroutines.launch
 
 enum class ProductSheetMode { ADD, EDIT }
 
@@ -141,6 +148,10 @@ fun ProductsScreen(
     var editingProductId by remember { mutableStateOf<String?>(null) }
     var selectedProduct by remember { mutableStateOf<Product?>(null) }
     var actionProduct by remember { mutableStateOf<Product?>(null) }
+    val selectionController = remember { UniversalSelectionController() }
+    val snackbarHostState = remember { SnackbarHostState() }
+    val coroutineScope = rememberCoroutineScope()
+    var deleteConfirmProductIds by remember { mutableStateOf<List<String>>(emptyList()) }
 
     val normalizedQuery = remember(searchQuery) { searchQuery.trim().lowercase(Locale.US) }
     val filteredProducts = remember(products, normalizedQuery) {
@@ -170,16 +181,29 @@ fun ProductsScreen(
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         containerColor = AppColors.screenBg,
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
-            TopAppBar(
-                title = { Text("Manage Products", fontWeight = FontWeight.Bold) },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+            if (selectionController.isSelectionActive) {
+                UniversalSelectionTopAppBar(
+                    controller = selectionController,
+                    visibleItemCount = filteredProducts.size,
+                    onClose = { selectionController.exitSelection() },
+                    onSelectAll = { selectionController.toggleSelectAll(filteredProducts.map { it.id }) },
+                    onDelete = {
+                        deleteConfirmProductIds = selectionController.selectedIdsSnapshot().toList()
                     }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = AppColors.cardBg)
-            )
+                )
+            } else {
+                TopAppBar(
+                    title = { Text("Manage Products", fontWeight = FontWeight.Bold) },
+                    navigationIcon = {
+                        IconButton(onClick = onNavigateBack) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(containerColor = AppColors.cardBg)
+                )
+            }
         },
         floatingActionButton = {
             androidx.compose.material3.FloatingActionButton(
@@ -244,13 +268,16 @@ fun ProductsScreen(
                     items(items = filteredProducts, key = { it.id }) { product ->
                         ProductRow(
                             product = product,
-                            onOpenDetail = { selectedProduct = product },
+                            isSelected = selectionController.isSelected(product.id),
+                            selectionActive = selectionController.isSelectionActive,
+                            onOpenDetail = { if (selectionController.isSelectionActive) selectionController.toggleSelection(product.id) else selectedProduct = product },
                             onEdit = {
                                 editingProductId = product.id
                                 sheetMode = ProductSheetMode.EDIT
                             },
-                            onDelete = { viewModel.deleteProduct(product.id) },
-                            onMore = { actionProduct = product }
+                            onDelete = { actionProduct = product },
+                            onMore = { actionProduct = product },
+                            onLongPress = { selectionController.enterSelection(product.id) }
                         )
                     }
                 }
@@ -304,6 +331,33 @@ fun ProductsScreen(
         )
     }
 
+    if (deleteConfirmProductIds.isNotEmpty()) {
+        val deleteCount = deleteConfirmProductIds.size
+        val deleteLabel = if (deleteCount == 1) "this product" else "$deleteCount selected products"
+        AlertDialog(
+            onDismissRequest = { deleteConfirmProductIds = emptyList() },
+            title = { Text(if (deleteCount == 1) "Delete this product?" else "Delete $deleteCount selected products?") },
+            text = { Text("This action cannot be undone.") },
+            confirmButton = {
+                Button(onClick = {
+                    deleteConfirmProductIds.forEach { id -> viewModel.deleteProduct(id) }
+                    selectionController.exitSelection()
+                    deleteConfirmProductIds = emptyList()
+                    coroutineScope.launch {
+                        snackbarHostState.showSnackbar(if (deleteCount == 1) "Product deleted." else "$deleteCount products deleted.")
+                    }
+                }) {
+                    Text("Delete")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { deleteConfirmProductIds = emptyList() }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
     actionProduct?.let { product ->
         AlertDialog(
             onDismissRequest = { actionProduct = null },
@@ -344,10 +398,13 @@ fun ProductsScreen(
 @Composable
 private fun ProductRow(
     product: Product,
+    isSelected: Boolean,
+    selectionActive: Boolean,
     onOpenDetail: () -> Unit,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
-    onMore: () -> Unit
+    onMore: () -> Unit,
+    onLongPress: () -> Unit
 ) {
     val statusColor = when {
         product.currentStock <= 0.0 -> Color(0xFFC62828)
@@ -363,12 +420,16 @@ private fun ProductRow(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .border(0.5.dp, Color(0xFFE8E8E8), RoundedCornerShape(8.dp))
+            .border(
+                1.dp,
+                if (isSelected) AppColors.primary.copy(alpha = 0.35f) else Color(0xFFE8E8E8),
+                RoundedCornerShape(8.dp)
+            )
             .premiumCombinedClickable(
                 onClick = onOpenDetail,
-                onLongClick = onMore
+                onLongClick = onLongPress
             ),
-        colors = CardDefaults.cardColors(containerColor = AppColors.cardBg)
+        colors = CardDefaults.cardColors(containerColor = if (isSelected) AppColors.primary.copy(alpha = 0.06f) else AppColors.cardBg)
     ) {
         Row(
             modifier = Modifier.padding(14.dp),

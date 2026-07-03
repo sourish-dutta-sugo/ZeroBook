@@ -26,6 +26,7 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.Modifier
@@ -38,9 +39,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.zerobook.app.data.*
 import com.zerobook.app.ui.AppViewModel
-import com.zerobook.app.ui.animation.premiumClickable
+import com.zerobook.app.ui.animation.premiumCombinedClickable
 import com.zerobook.app.ui.animation.premiumFabEntrance
 import com.zerobook.app.ui.animation.pressScale
+import com.zerobook.app.ui.selection.UniversalSelectionController
+import com.zerobook.app.ui.selection.UniversalSelectionIndicator
+import com.zerobook.app.ui.selection.UniversalSelectionTopAppBar
 import com.zerobook.app.ui.theme.*
 import kotlinx.coroutines.delay
 import java.util.UUID
@@ -62,6 +66,10 @@ fun PartiesScreen(
     var selectedTypeFilter by remember { mutableStateOf("ALL") } // "ALL", "CUSTOMER", "SUPPLIER"
     var showAddPartyForm by remember { mutableStateOf(false) }
     var editingPartyId by remember { mutableStateOf<String?>(null) }
+    val selectionController = remember { UniversalSelectionController() }
+    val snackbarHostState = remember { SnackbarHostState() }
+    val coroutineScope = rememberCoroutineScope()
+    var deleteConfirmPartyIds by remember { mutableStateOf<List<String>>(emptyList()) }
 
     // Computes dynamic balances per party
     val ledgerBalancesByAccountHead by remember(ledgerEntries) {
@@ -108,6 +116,18 @@ fun PartiesScreen(
             Box(modifier = Modifier.width(360.dp).fillMaxHeight()) {
                 Scaffold(
                     modifier = Modifier.fillMaxSize(),
+                    snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
+                    topBar = {
+                        if (selectionController.isSelectionActive) {
+                            UniversalSelectionTopAppBar(
+                                controller = selectionController,
+                                visibleItemCount = filteredParties.size,
+                                onClose = { selectionController.exitSelection() },
+                                onSelectAll = { selectionController.toggleSelectAll(filteredParties.map { it.id }) },
+                                onDelete = { deleteConfirmPartyIds = selectionController.selectedIdsSnapshot().toList() }
+                            )
+                        }
+                    },
                     floatingActionButton = {
                         FloatingActionButton(
                             onClick = { showAddPartyForm = true },
@@ -193,15 +213,22 @@ fun PartiesScreen(
                                             .fillMaxWidth()
                                             .border(
                                                 1.dp,
-                                                if (isSelected) AppColors.primary else AppColors.border,
+                                                if (isSelected || selectionController.isSelected(party.id)) AppColors.primary.copy(alpha = 0.35f) else AppColors.border,
                                                 RoundedCornerShape(16.dp)
                                             )
-                                            .premiumClickable {
-                                                selectedPartyId = party.id
-                                                showAddPartyForm = false
-                                            },
+                                            .premiumCombinedClickable(
+                                                onClick = {
+                                                    if (selectionController.isSelectionActive) {
+                                                        selectionController.toggleSelection(party.id)
+                                                    } else {
+                                                        selectedPartyId = party.id
+                                                        showAddPartyForm = false
+                                                    }
+                                                },
+                                                onLongClick = { selectionController.enterSelection(party.id) }
+                                            ),
                                         colors = CardDefaults.cardColors(
-                                            containerColor = if (isSelected) AppColors.primary.copy(alpha = 0.08f) else AppColors.cardBg
+                                            containerColor = if (isSelected || selectionController.isSelected(party.id)) AppColors.primary.copy(alpha = 0.08f) else AppColors.cardBg
                                         )
                                     ) {
                                         Row(
@@ -209,6 +236,11 @@ fun PartiesScreen(
                                             horizontalArrangement = Arrangement.SpaceBetween,
                                             verticalAlignment = Alignment.CenterVertically
                                         ) {
+                                            if (selectionController.isSelectionActive) {
+                                                Box(modifier = Modifier.padding(end = 8.dp)) {
+                                                    UniversalSelectionIndicator(isSelected = selectionController.isSelected(party.id))
+                                                }
+                                            }
                                             Column(modifier = Modifier.weight(1.2f)) {
                                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                                     Text(
@@ -324,6 +356,18 @@ fun PartiesScreen(
         } else {
             Scaffold(
                 modifier = Modifier.fillMaxSize(),
+                snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
+                topBar = {
+                    if (selectionController.isSelectionActive) {
+                        UniversalSelectionTopAppBar(
+                            controller = selectionController,
+                            visibleItemCount = filteredParties.size,
+                            onClose = { selectionController.exitSelection() },
+                            onSelectAll = { selectionController.toggleSelectAll(filteredParties.map { it.id }) },
+                            onDelete = { deleteConfirmPartyIds = selectionController.selectedIdsSnapshot().toList() }
+                        )
+                    }
+                },
                 floatingActionButton = {
                     FloatingActionButton(
                         onClick = { showAddPartyForm = true },
@@ -431,15 +475,33 @@ fun PartiesScreen(
                                 Card(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .border(1.dp, AppColors.border, RoundedCornerShape(16.dp))
-                                        .clickable { onPartySelected(party.id) },
-                                    colors = CardDefaults.cardColors(containerColor = AppColors.cardBg)
+                                        .border(
+                                            1.dp,
+                                            if (selectionController.isSelected(party.id)) AppColors.primary.copy(alpha = 0.35f) else AppColors.border,
+                                            RoundedCornerShape(16.dp)
+                                        )
+                                        .premiumCombinedClickable(
+                                            onClick = {
+                                                if (selectionController.isSelectionActive) {
+                                                    selectionController.toggleSelection(party.id)
+                                                } else {
+                                                    onPartySelected(party.id)
+                                                }
+                                            },
+                                            onLongClick = { selectionController.enterSelection(party.id) }
+                                        ),
+                                    colors = CardDefaults.cardColors(containerColor = if (selectionController.isSelected(party.id)) AppColors.primary.copy(alpha = 0.08f) else AppColors.cardBg)
                                 ) {
                                     Row(
                                         modifier = Modifier.padding(14.dp),
                                         horizontalArrangement = Arrangement.SpaceBetween,
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
+                                        if (selectionController.isSelectionActive) {
+                                            Box(modifier = Modifier.padding(end = 8.dp)) {
+                                                UniversalSelectionIndicator(isSelected = selectionController.isSelected(party.id))
+                                            }
+                                        }
                                         Column(modifier = Modifier.weight(1.2f)) {
                                             Row(verticalAlignment = Alignment.CenterVertically) {
                                                 Text(
@@ -502,6 +564,32 @@ fun PartiesScreen(
                 }
             }
         }
+    }
+
+    if (deleteConfirmPartyIds.isNotEmpty()) {
+        val deleteCount = deleteConfirmPartyIds.size
+        AlertDialog(
+            onDismissRequest = { deleteConfirmPartyIds = emptyList() },
+            title = { Text(if (deleteCount == 1) "Delete this party?" else "Delete $deleteCount selected parties?") },
+            text = { Text("This action cannot be undone.") },
+            confirmButton = {
+                Button(onClick = {
+                    deleteConfirmPartyIds.forEach { id -> viewModel.deleteParty(id) }
+                    selectionController.exitSelection()
+                    deleteConfirmPartyIds = emptyList()
+                    coroutineScope.launch {
+                        snackbarHostState.showSnackbar(if (deleteCount == 1) "Party deleted." else "$deleteCount parties deleted.")
+                    }
+                }) {
+                    Text("Delete")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { deleteConfirmPartyIds = emptyList() }) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 }
 

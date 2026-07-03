@@ -50,6 +50,7 @@ import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Upload
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.LocalConfiguration
@@ -70,9 +71,12 @@ import com.zerobook.app.data.EmailReminderScheduler
 import com.zerobook.app.services.InvoiceGenerator
 import com.zerobook.app.services.configureInvoiceWebView
 import com.zerobook.app.ui.AppViewModel
-import com.zerobook.app.ui.animation.premiumClickable
+import com.zerobook.app.ui.animation.premiumCombinedClickable
 import com.zerobook.app.ui.animation.premiumFabEntrance
 import com.zerobook.app.ui.animation.pressScale
+import com.zerobook.app.ui.selection.UniversalSelectionController
+import com.zerobook.app.ui.selection.UniversalSelectionIndicator
+import com.zerobook.app.ui.selection.UniversalSelectionTopAppBar
 import com.zerobook.app.ui.theme.AppColors
 import com.zerobook.app.ui.theme.Colors
 import com.zerobook.app.ui.theme.SkeletonCard
@@ -471,6 +475,10 @@ fun VouchersScreen(
     var sortOption by remember { mutableStateOf("DEFAULT") }
     var customStartDate by remember { mutableStateOf<Long?>(null) }
     var customEndDate by remember { mutableStateOf<Long?>(null) }
+    val selectionController = remember { UniversalSelectionController() }
+    val snackbarHostState = remember { SnackbarHostState() }
+    val coroutineScope = rememberCoroutineScope()
+    var deleteConfirmVoucherIds by remember { mutableStateOf<List<String>>(emptyList()) }
 
     val filteredVouchers by remember(vouchers, searchQuery, selectedTypeFilter, partyNameById) {
         derivedStateOf {
@@ -614,6 +622,18 @@ fun VouchersScreen(
             Box(modifier = Modifier.width(360.dp).fillMaxHeight()) {
                 Scaffold(
                     containerColor = Color(0xFFF2F4F7),
+                    snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
+                    topBar = {
+                        if (selectionController.isSelectionActive) {
+                            UniversalSelectionTopAppBar(
+                                controller = selectionController,
+                                visibleItemCount = displayedVouchers.size,
+                                onClose = { selectionController.exitSelection() },
+                                onSelectAll = { selectionController.toggleSelectAll(displayedVouchers.map { it.id }) },
+                                onDelete = { deleteConfirmVoucherIds = selectionController.selectedIdsSnapshot().toList() }
+                            )
+                        }
+                    },
                     floatingActionButton = {
                         FloatingActionButton(
                             onClick = { navigateToNewVoucher(null) },
@@ -689,12 +709,21 @@ fun VouchersScreen(
                                             .shadow(6.dp, RoundedCornerShape(16.dp))
                                             .border(
                                                 1.dp,
-                                                if (isSelected) AppColors.primary else AppColors.border.copy(alpha = 0.7f),
+                                                if (isSelected || selectionController.isSelected(voucher.id)) AppColors.primary.copy(alpha = 0.35f) else AppColors.border.copy(alpha = 0.7f),
                                                 RoundedCornerShape(16.dp)
                                             )
-                                            .premiumClickable { selectedVoucherId = voucher.id },
+                                            .premiumCombinedClickable(
+                                                onClick = {
+                                                    if (selectionController.isSelectionActive) {
+                                                        selectionController.toggleSelection(voucher.id)
+                                                    } else {
+                                                        selectedVoucherId = voucher.id
+                                                    }
+                                                },
+                                                onLongClick = { selectionController.enterSelection(voucher.id) }
+                                            ),
                                         colors = CardDefaults.cardColors(
-                                            containerColor = if (isSelected) AppColors.primary.copy(alpha = 0.06f) else AppColors.cardBg
+                                            containerColor = if (isSelected || selectionController.isSelected(voucher.id)) AppColors.primary.copy(alpha = 0.06f) else AppColors.cardBg
                                         ),
                                         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                                     ) {
@@ -781,6 +810,18 @@ fun VouchersScreen(
     } else {
         Scaffold(
             containerColor = Color(0xFFF2F4F7),
+            snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
+            topBar = {
+                if (selectionController.isSelectionActive) {
+                    UniversalSelectionTopAppBar(
+                        controller = selectionController,
+                        visibleItemCount = displayedVouchers.size,
+                        onClose = { selectionController.exitSelection() },
+                        onSelectAll = { selectionController.toggleSelectAll(displayedVouchers.map { it.id }) },
+                        onDelete = { deleteConfirmVoucherIds = selectionController.selectedIdsSnapshot().toList() }
+                    )
+                }
+            },
             floatingActionButton = {
                 FloatingActionButton(
                     onClick = { navigateToNewVoucher(null) },
@@ -892,9 +933,22 @@ fun VouchersScreen(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .shadow(6.dp, RoundedCornerShape(16.dp))
-                                    .border(1.dp, AppColors.border.copy(alpha = 0.7f), RoundedCornerShape(16.dp))
-                                    .premiumClickable { navigateToNewVoucher(voucher.id) },
-                                colors = CardDefaults.cardColors(containerColor = AppColors.cardBg),
+                                    .border(
+                                        1.dp,
+                                        if (selectionController.isSelected(voucher.id)) AppColors.primary.copy(alpha = 0.35f) else AppColors.border.copy(alpha = 0.7f),
+                                        RoundedCornerShape(16.dp)
+                                    )
+                                    .premiumCombinedClickable(
+                                        onClick = {
+                                            if (selectionController.isSelectionActive) {
+                                                selectionController.toggleSelection(voucher.id)
+                                            } else {
+                                                navigateToNewVoucher(voucher.id)
+                                            }
+                                        },
+                                        onLongClick = { selectionController.enterSelection(voucher.id) }
+                                    ),
+                                colors = CardDefaults.cardColors(containerColor = if (selectionController.isSelected(voucher.id)) AppColors.primary.copy(alpha = 0.06f) else AppColors.cardBg),
                                 elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                             ) {
                                 Column(modifier = Modifier.padding(14.dp)) {
@@ -954,6 +1008,32 @@ fun VouchersScreen(
                 }
             }
         }
+    }
+
+    if (deleteConfirmVoucherIds.isNotEmpty()) {
+        val deleteCount = deleteConfirmVoucherIds.size
+        AlertDialog(
+            onDismissRequest = { deleteConfirmVoucherIds = emptyList() },
+            title = { Text(if (deleteCount == 1) "Delete this voucher?" else "Delete $deleteCount selected vouchers?") },
+            text = { Text("This action cannot be undone.") },
+            confirmButton = {
+                Button(onClick = {
+                    deleteConfirmVoucherIds.forEach { id -> viewModel.deleteVoucher(id) }
+                    selectionController.exitSelection()
+                    deleteConfirmVoucherIds = emptyList()
+                    coroutineScope.launch {
+                        snackbarHostState.showSnackbar(if (deleteCount == 1) "Voucher deleted." else "$deleteCount vouchers deleted.")
+                    }
+                }) {
+                    Text("Delete")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { deleteConfirmVoucherIds = emptyList() }) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 }
 
