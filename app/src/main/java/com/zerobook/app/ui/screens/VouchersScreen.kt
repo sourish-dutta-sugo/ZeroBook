@@ -12,6 +12,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -191,54 +192,167 @@ private val voucherTypeFilterOptions = listOf(
     "EXPENSE"
 )
 
-private val voucherSortLabelOptions = listOf(
-    "DEFAULT" to "Default order",
-    "LATEST" to "Latest first",
-    "OLDEST" to "Oldest first",
-    "THIS_WEEK" to "This week",
-    "THIS_MONTH" to "This month",
-    "THIS_YEAR" to "This year",
-    "CUSTOM" to "Custom date range"
+private const val SORT_DEFAULT = "DEFAULT"
+private const val SORT_NEWEST_FIRST = "NEWEST_FIRST"
+private const val SORT_OLDEST_FIRST = "OLDEST_FIRST"
+private const val SORT_HIGHEST_AMOUNT = "HIGHEST_AMOUNT"
+private const val SORT_LOWEST_AMOUNT = "LOWEST_AMOUNT"
+private const val SORT_VOUCHER_NUMBER = "VOUCHER_NUMBER"
+private const val SORT_PARTY_NAME_AZ = "PARTY_NAME_AZ"
+private const val SORT_PARTY_NAME_ZA = "PARTY_NAME_ZA"
+
+private data class VoucherFilterState(
+    val type: String? = null,
+    val paymentStatus: String? = null,
+    val partyName: String? = null,
+    val minAmount: Double? = null,
+    val maxAmount: Double? = null,
+    val reference: String? = null,
+    val startDate: Long? = null,
+    val endDate: Long? = null
+) {
+    val activeFilterCount: Int
+        get() = buildList {
+            if (!type.isNullOrBlank() && type != "ALL") add("type")
+            if (!paymentStatus.isNullOrBlank() && paymentStatus != "ANY") add("paymentStatus")
+            if (!partyName.isNullOrBlank()) add("partyName")
+            if (minAmount != null && minAmount > 0.0) add("minAmount")
+            if (maxAmount != null && maxAmount > 0.0) add("maxAmount")
+            if (!reference.isNullOrBlank()) add("reference")
+            if (startDate != null || endDate != null) add("dateRange")
+        }.size
+}
+
+private data class VoucherSortOption(val value: String, val label: String)
+private data class VoucherFilterChip(val key: String, val label: String)
+
+private val voucherPaymentStatusOptions = listOf(
+    "ANY" to "Any status",
+    "PAID" to "Paid",
+    "PARTIAL" to "Partially paid",
+    "UNPAID" to "Unpaid"
 )
 
-private val voucherListSortOptions = listOf(
-    "Newest First",
-    "Oldest First",
-    "Amount (High → Low)",
-    "Amount (Low → High)",
-    "Voucher Number (Ascending)",
-    "Voucher Number (Descending)",
-    "Party Name (A → Z)",
-    "Party Name (Z → A)"
+private val voucherSortOptions = listOf(
+    VoucherSortOption(SORT_DEFAULT, "Default order"),
+    VoucherSortOption(SORT_NEWEST_FIRST, "Newest First"),
+    VoucherSortOption(SORT_OLDEST_FIRST, "Oldest First"),
+    VoucherSortOption(SORT_HIGHEST_AMOUNT, "Highest Amount"),
+    VoucherSortOption(SORT_LOWEST_AMOUNT, "Lowest Amount"),
+    VoucherSortOption(SORT_VOUCHER_NUMBER, "Voucher Number"),
+    VoucherSortOption(SORT_PARTY_NAME_AZ, "Party Name (A–Z)"),
+    VoucherSortOption(SORT_PARTY_NAME_ZA, "Party Name (Z–A)")
 )
 
 private fun voucherBadgeColor(type: String): Color = AppColors.primary
 
-private fun sortedVouchersForDisplay(
+private fun voucherSortLabel(sortOption: String): String =
+    voucherSortOptions.firstOrNull { it.value == sortOption }?.label ?: "Default order"
+
+private fun voucherPaymentStatusLabel(status: String?): String =
+    voucherPaymentStatusOptions.firstOrNull { it.first == status }?.second ?: "Any status"
+
+private fun VoucherFilterState.toActiveChips(): List<VoucherFilterChip> {
+    val chips = mutableListOf<VoucherFilterChip>()
+    type?.takeIf { it.isNotBlank() && it != "ALL" }?.let {
+        chips += VoucherFilterChip("type", voucherTypeLabel(it))
+    }
+    paymentStatus?.takeIf { it.isNotBlank() && it != "ANY" }?.let {
+        chips += VoucherFilterChip("paymentStatus", voucherPaymentStatusLabel(it))
+    }
+    partyName?.takeIf { it.isNotBlank() }?.let {
+        chips += VoucherFilterChip("partyName", it)
+    }
+    minAmount?.takeIf { it > 0.0 }?.let {
+        chips += VoucherFilterChip("minAmount", "Min: ₹${"%.0f".format(it)}")
+    }
+    maxAmount?.takeIf { it > 0.0 }?.let {
+        chips += VoucherFilterChip("maxAmount", "Max: ₹${"%.0f".format(it)}")
+    }
+    reference?.takeIf { it.isNotBlank() }?.let {
+        chips += VoucherFilterChip("reference", "Ref: $it")
+    }
+    if (startDate != null || endDate != null) {
+        val label = when {
+            startDate != null && endDate != null -> "Date: ${Utils.formatDate(startDate)} – ${Utils.formatDate(endDate)}"
+            startDate != null -> "From: ${Utils.formatDate(startDate)}"
+            endDate != null -> "To: ${Utils.formatDate(endDate)}"
+            else -> "Date range"
+        }
+        chips += VoucherFilterChip("dateRange", label)
+    }
+    return chips
+}
+
+private fun VoucherFilterState.removeFilter(key: String): VoucherFilterState = when (key) {
+    "type" -> copy(type = null)
+    "paymentStatus" -> copy(paymentStatus = null)
+    "partyName" -> copy(partyName = null)
+    "minAmount" -> copy(minAmount = null)
+    "maxAmount" -> copy(maxAmount = null)
+    "reference" -> copy(reference = null)
+    "dateRange" -> copy(startDate = null, endDate = null)
+    else -> this
+}
+
+private fun applyVoucherFilters(
+    vouchers: List<Voucher>,
+    searchQuery: String,
+    filterState: VoucherFilterState,
+    partyNameById: Map<String, String>
+): List<Voucher> {
+    val normalizedQuery = searchQuery.trim()
+    return vouchers.filter { voucher ->
+        val partyName = voucher.partyId?.let { partyNameById[it] } ?: "Cash / Bank"
+        val matchesSearch = normalizedQuery.isBlank() ||
+            voucher.voucherNo.contains(normalizedQuery, ignoreCase = true) ||
+            partyName.contains(normalizedQuery, ignoreCase = true) ||
+            voucher.referenceNo.contains(normalizedQuery, ignoreCase = true) ||
+            voucher.narration.contains(normalizedQuery, ignoreCase = true)
+
+        val matchesType = when (filterState.type) {
+            null, "", "ALL" -> true
+            "INCOME" -> voucher.type in setOf("INCOME", "SALE", "RECEIPT")
+            "EXPENSE" -> voucher.type in setOf("EXPENSE", "PURCHASE", "PAYMENT")
+            else -> voucher.type == filterState.type
+        }
+
+        val matchesPaymentStatus = when (filterState.paymentStatus) {
+            null, "", "ANY" -> true
+            "PAID" -> voucher.outstandingAmount <= 0.0
+            "PARTIAL" -> voucher.outstandingAmount in 0.0..<voucher.netAmount
+            "UNPAID" -> voucher.outstandingAmount > 0.0
+            else -> true
+        }
+
+        val matchesParty = filterState.partyName.isNullOrBlank() ||
+            partyName.contains(filterState.partyName.trim(), ignoreCase = true)
+
+        val matchesMinAmount = filterState.minAmount == null || voucher.netAmount >= filterState.minAmount
+        val matchesMaxAmount = filterState.maxAmount == null || voucher.netAmount <= filterState.maxAmount
+        val matchesReference = filterState.reference.isNullOrBlank() ||
+            voucher.referenceNo.contains(filterState.reference.trim(), ignoreCase = true)
+        val matchesDateRange = (filterState.startDate == null || voucher.date >= filterState.startDate) &&
+            (filterState.endDate == null || voucher.date <= filterState.endDate)
+
+        matchesSearch && matchesType && matchesPaymentStatus && matchesParty &&
+            matchesMinAmount && matchesMaxAmount && matchesReference && matchesDateRange
+    }
+}
+
+private fun applyVoucherSorting(
     vouchers: List<Voucher>,
     sortOption: String,
-    startDate: Long?,
-    endDate: Long?
-): List<Voucher> {
-    val baseList = when (sortOption) {
-        "LATEST" -> vouchers.sortedByDescending { it.date }
-        "OLDEST" -> vouchers.sortedBy { it.date }
-        "THIS_WEEK" -> vouchers.filter { it.date >= System.currentTimeMillis() - 7L * 24 * 60 * 60 * 1000 }
-        "THIS_MONTH" -> vouchers.filter { it.date >= System.currentTimeMillis() - 30L * 24 * 60 * 60 * 1000 }
-        "THIS_YEAR" -> vouchers.filter { it.date >= System.currentTimeMillis() - 365L * 24 * 60 * 60 * 1000 }
-        "CUSTOM" -> {
-            val start = startDate ?: 0L
-            val end = endDate ?: Long.MAX_VALUE
-            vouchers.filter { voucher -> voucher.date in start..end }
-        }
-        else -> vouchers
-    }
-
-    return if (sortOption == "CUSTOM" && (startDate == null || endDate == null)) {
-        vouchers
-    } else {
-        baseList
-    }
+    partyNameById: Map<String, String>
+): List<Voucher> = when (sortOption) {
+    SORT_NEWEST_FIRST -> vouchers.sortedByDescending { it.date }
+    SORT_OLDEST_FIRST -> vouchers.sortedBy { it.date }
+    SORT_HIGHEST_AMOUNT -> vouchers.sortedByDescending { it.netAmount }
+    SORT_LOWEST_AMOUNT -> vouchers.sortedBy { it.netAmount }
+    SORT_VOUCHER_NUMBER -> vouchers.sortedBy { it.voucherNo.lowercase(Locale.getDefault()) }
+    SORT_PARTY_NAME_AZ -> vouchers.sortedBy { (it.partyId?.let { partyId -> partyNameById[partyId] } ?: "Cash / Bank").lowercase(Locale.getDefault()) }
+    SORT_PARTY_NAME_ZA -> vouchers.sortedByDescending { (it.partyId?.let { partyId -> partyNameById[partyId] } ?: "Cash / Bank").lowercase(Locale.getDefault()) }
+    else -> vouchers
 }
 
 private data class JournalUiRow(
@@ -448,7 +562,7 @@ private fun TransportDetailsSection(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun VouchersScreen(
     viewModel: AppViewModel,
@@ -463,43 +577,27 @@ fun VouchersScreen(
     }
 
     var searchQuery by remember { mutableStateOf("") }
-    var selectedTypeFilter by remember { mutableStateOf("ALL") }
     var showFilterSheet by remember { mutableStateOf(false) }
     var showSortSheet by remember { mutableStateOf(false) }
-    var pendingFilter by remember { mutableStateOf("ALL") }
-    var pendingSort by remember { mutableStateOf("DEFAULT") }
-    var pendingStartDate by remember { mutableStateOf<Long?>(null) }
-    var pendingEndDate by remember { mutableStateOf<Long?>(null) }
-    var showStartDatePicker by remember { mutableStateOf(false) }
-    var showEndDatePicker by remember { mutableStateOf(false) }
-    var sortOption by remember { mutableStateOf("DEFAULT") }
-    var customStartDate by remember { mutableStateOf<Long?>(null) }
-    var customEndDate by remember { mutableStateOf<Long?>(null) }
+    var appliedFilterState by remember { mutableStateOf(VoucherFilterState()) }
+    var pendingFilterState by remember { mutableStateOf(VoucherFilterState()) }
+    var appliedSortOption by remember { mutableStateOf(SORT_DEFAULT) }
+    var pendingSortOption by remember { mutableStateOf(SORT_DEFAULT) }
+    var activeDatePicker by remember { mutableStateOf<String?>(null) }
     val selectionController = remember { UniversalSelectionController() }
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
     var deleteConfirmVoucherIds by remember { mutableStateOf<List<String>>(emptyList()) }
 
-    val filteredVouchers by remember(vouchers, searchQuery, selectedTypeFilter, partyNameById) {
+    val filteredVouchers by remember(vouchers, searchQuery, appliedFilterState, partyNameById) {
         derivedStateOf {
-            vouchers.filter { voucher ->
-                val partyName = voucher.partyId?.let { partyNameById[it] } ?: "Cash / Bank"
-            val matchesSearch = voucher.voucherNo.contains(searchQuery, ignoreCase = true) ||
-                    partyName.contains(searchQuery, ignoreCase = true)
-            val matchesType = when (selectedTypeFilter) {
-                "ALL" -> true
-                "INCOME" -> voucher.type in setOf("INCOME", "SALE", "RECEIPT")
-                "EXPENSE" -> voucher.type in setOf("EXPENSE", "PURCHASE", "PAYMENT")
-                else -> voucher.type == selectedTypeFilter
-            }
-                matchesSearch && matchesType
-            }
+            applyVoucherFilters(vouchers, searchQuery, appliedFilterState, partyNameById)
         }
     }
 
-    val displayedVouchers by remember(filteredVouchers, sortOption, customStartDate, customEndDate) {
+    val displayedVouchers by remember(filteredVouchers, appliedSortOption, partyNameById) {
         derivedStateOf {
-            sortedVouchersForDisplay(filteredVouchers, sortOption, customStartDate, customEndDate)
+            applyVoucherSorting(filteredVouchers, appliedSortOption, partyNameById)
         }
     }
 
@@ -521,23 +619,98 @@ fun VouchersScreen(
     if (showFilterSheet) {
         ModalBottomSheet(onDismissRequest = { showFilterSheet = false }) {
             Column(modifier = Modifier.fillMaxWidth().padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text("Filter vouchers", fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
-                voucherTypeFilterOptions.forEach { type ->
-                    FilterChip(
-                        selected = pendingFilter == type,
-                        onClick = { pendingFilter = type },
-                        label = { Text(voucherTypeLabel(type)) },
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = AppColors.primary,
-                            selectedLabelColor = AppColors.textOnPrimary
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    Text("Filter vouchers", fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
+                    TextButton(onClick = {
+                        pendingFilterState = VoucherFilterState()
+                        appliedFilterState = VoucherFilterState()
+                        showFilterSheet = false
+                    }) { Text("Clear All") }
+                }
+
+                Text("Voucher Type", fontWeight = FontWeight.SemiBold, color = AppColors.textSecondary)
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    voucherTypeFilterOptions.forEach { type ->
+                        FilterChip(
+                            selected = pendingFilterState.type == type || (pendingFilterState.type == null && type == "ALL"),
+                            onClick = {
+                                pendingFilterState = pendingFilterState.copy(type = if (type == "ALL") null else type)
+                            },
+                            label = { Text(voucherTypeLabel(type)) },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = AppColors.primary,
+                                selectedLabelColor = AppColors.textOnPrimary
+                            )
                         )
+                    }
+                }
+
+                Text("Date", fontWeight = FontWeight.SemiBold, color = AppColors.textSecondary)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedButton(onClick = { activeDatePicker = "start" }) {
+                        Text(pendingFilterState.startDate?.let { Utils.formatDate(it) } ?: "Start date")
+                    }
+                    OutlinedButton(onClick = { activeDatePicker = "end" }) {
+                        Text(pendingFilterState.endDate?.let { Utils.formatDate(it) } ?: "End date")
+                    }
+                }
+
+                Text("Party", fontWeight = FontWeight.SemiBold, color = AppColors.textSecondary)
+                OutlinedTextField(
+                    value = pendingFilterState.partyName.orEmpty(),
+                    onValueChange = { pendingFilterState = pendingFilterState.copy(partyName = it) },
+                    label = { Text("Party name") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Text("Payment Status", fontWeight = FontWeight.SemiBold, color = AppColors.textSecondary)
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    voucherPaymentStatusOptions.forEach { (value, label) ->
+                        FilterChip(
+                            selected = pendingFilterState.paymentStatus == value,
+                            onClick = { pendingFilterState = pendingFilterState.copy(paymentStatus = if (pendingFilterState.paymentStatus == value) null else value) },
+                            label = { Text(label) },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = AppColors.primary,
+                                selectedLabelColor = AppColors.textOnPrimary
+                            )
+                        )
+                    }
+                }
+
+                Text("Amount", fontWeight = FontWeight.SemiBold, color = AppColors.textSecondary)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = pendingFilterState.minAmount?.toString().orEmpty(),
+                        onValueChange = { value -> pendingFilterState = pendingFilterState.copy(minAmount = value.toDoubleOrNull()) },
+                        label = { Text("Min") },
+                        singleLine = true,
+                        modifier = Modifier.weight(1f)
+                    )
+                    OutlinedTextField(
+                        value = pendingFilterState.maxAmount?.toString().orEmpty(),
+                        onValueChange = { value -> pendingFilterState = pendingFilterState.copy(maxAmount = value.toDoubleOrNull()) },
+                        label = { Text("Max") },
+                        singleLine = true,
+                        modifier = Modifier.weight(1f)
                     )
                 }
+
+                Text("Reference", fontWeight = FontWeight.SemiBold, color = AppColors.textSecondary)
+                OutlinedTextField(
+                    value = pendingFilterState.reference.orEmpty(),
+                    onValueChange = { pendingFilterState = pendingFilterState.copy(reference = it) },
+                    label = { Text("Reference no.") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                     TextButton(onClick = { showFilterSheet = false }) { Text("Cancel") }
                     Spacer(modifier = Modifier.width(8.dp))
                     Button(onClick = {
-                        selectedTypeFilter = pendingFilter
+                        appliedFilterState = pendingFilterState
                         showFilterSheet = false
                     }) { Text("Apply") }
                 }
@@ -549,31 +722,23 @@ fun VouchersScreen(
         ModalBottomSheet(onDismissRequest = { showSortSheet = false }) {
             Column(modifier = Modifier.fillMaxWidth().padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text("Sort vouchers", fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
-                voucherSortLabelOptions.forEach { (value, label) ->
+                voucherSortOptions.forEach { option ->
                     Row(
-                        modifier = Modifier.fillMaxWidth().clickable { pendingSort = value },
+                        modifier = Modifier.fillMaxWidth().clickable { pendingSortOption = option.value },
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Text(label)
-                        if (pendingSort == value) {
+                        Text(option.label)
+                        if (pendingSortOption == option.value) {
                             Icon(Icons.Default.Check, contentDescription = null, tint = AppColors.primary)
                         }
-                    }
-                }
-                if (pendingSort == "CUSTOM") {
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        OutlinedButton(onClick = { showStartDatePicker = true }) { Text(pendingStartDate?.let { Utils.formatDate(it) } ?: "Start date") }
-                        OutlinedButton(onClick = { showEndDatePicker = true }) { Text(pendingEndDate?.let { Utils.formatDate(it) } ?: "End date") }
                     }
                 }
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                     TextButton(onClick = { showSortSheet = false }) { Text("Cancel") }
                     Spacer(modifier = Modifier.width(8.dp))
                     Button(onClick = {
-                        sortOption = pendingSort
-                        customStartDate = pendingStartDate
-                        customEndDate = pendingEndDate
+                        appliedSortOption = pendingSortOption
                         showSortSheet = false
                     }) { Text("Apply") }
                 }
@@ -581,39 +746,26 @@ fun VouchersScreen(
         }
     }
 
-    if (showStartDatePicker) {
-        val startPickerState = rememberDatePickerState(initialSelectedDateMillis = pendingStartDate ?: System.currentTimeMillis())
+    if (activeDatePicker != null) {
+        val pickerState = rememberDatePickerState(initialSelectedDateMillis = if (activeDatePicker == "start") pendingFilterState.startDate ?: System.currentTimeMillis() else pendingFilterState.endDate ?: System.currentTimeMillis())
         DatePickerDialog(
-            onDismissRequest = { showStartDatePicker = false },
+            onDismissRequest = { activeDatePicker = null },
             confirmButton = {
                 TextButton(onClick = {
-                    pendingStartDate = startPickerState.selectedDateMillis
-                    showStartDatePicker = false
+                    val selectedDate = pickerState.selectedDateMillis
+                    pendingFilterState = if (activeDatePicker == "start") {
+                        pendingFilterState.copy(startDate = selectedDate)
+                    } else {
+                        pendingFilterState.copy(endDate = selectedDate)
+                    }
+                    activeDatePicker = null
                 }) { Text("Done") }
             },
             dismissButton = {
-                TextButton(onClick = { showStartDatePicker = false }) { Text("Cancel") }
+                TextButton(onClick = { activeDatePicker = null }) { Text("Cancel") }
             }
         ) {
-            DatePicker(state = startPickerState, showModeToggle = false)
-        }
-    }
-
-    if (showEndDatePicker) {
-        val endPickerState = rememberDatePickerState(initialSelectedDateMillis = pendingEndDate ?: System.currentTimeMillis())
-        DatePickerDialog(
-            onDismissRequest = { showEndDatePicker = false },
-            confirmButton = {
-                TextButton(onClick = {
-                    pendingEndDate = endPickerState.selectedDateMillis
-                    showEndDatePicker = false
-                }) { Text("Done") }
-            },
-            dismissButton = {
-                TextButton(onClick = { showEndDatePicker = false }) { Text("Cancel") }
-            }
-        ) {
-            DatePicker(state = endPickerState, showModeToggle = false)
+            DatePicker(state = pickerState, showModeToggle = false)
         }
     }
 
@@ -677,22 +829,71 @@ fun VouchersScreen(
                             horizontalArrangement = Arrangement.End,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            OutlinedButton(onClick = { pendingFilter = selectedTypeFilter; showFilterSheet = true }, contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)) {
-                                Icon(Icons.Default.FilterList, contentDescription = null, modifier = Modifier.size(16.dp))
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text("Filter")
+                            BadgedBox(
+                                badge = {
+                                    if (appliedFilterState.activeFilterCount > 0) {
+                                        Badge(containerColor = AppColors.primary, contentColor = AppColors.textOnPrimary) {
+                                            Text(appliedFilterState.activeFilterCount.toString())
+                                        }
+                                    }
+                                }
+                            ) {
+                                OutlinedButton(onClick = { pendingFilterState = appliedFilterState; showFilterSheet = true }, contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)) {
+                                    Icon(Icons.Default.FilterList, contentDescription = null, modifier = Modifier.size(16.dp))
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text("Filter")
+                                }
                             }
                             Spacer(modifier = Modifier.width(8.dp))
-                            OutlinedButton(onClick = { pendingSort = sortOption; pendingStartDate = customStartDate; pendingEndDate = customEndDate; showSortSheet = true }, contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)) {
+                            OutlinedButton(onClick = { pendingSortOption = appliedSortOption; showSortSheet = true }, contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)) {
                                 Icon(Icons.Default.KeyboardArrowDown, contentDescription = null, modifier = Modifier.size(16.dp))
                                 Spacer(modifier = Modifier.width(6.dp))
-                                Text("Sort")
+                                Text(if (appliedSortOption == SORT_DEFAULT) "Sort" else "Sort: ${voucherSortLabel(appliedSortOption)}")
+                            }
+                        }
+
+                        if (appliedFilterState.activeFilterCount > 0) {
+                            FlowRow(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                appliedFilterState.toActiveChips().forEach { chip ->
+                                    InputChip(
+                                        selected = false,
+                                        onClick = { appliedFilterState = appliedFilterState.removeFilter(chip.key) },
+                                        label = { Text(chip.label) },
+                                        trailingIcon = { Icon(Icons.Default.Close, contentDescription = null) }
+                                    )
+                                }
+                                AssistChip(
+                                    onClick = {
+                                        appliedFilterState = VoucherFilterState()
+                                        pendingFilterState = VoucherFilterState()
+                                    },
+                                    label = { Text("Clear All") },
+                                    leadingIcon = { Icon(Icons.Default.Close, contentDescription = null) }
+                                )
                             }
                         }
 
                         if (displayedVouchers.isEmpty()) {
                             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                Text("No vouchers found.", color = AppColors.textSecondary)
+                                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(24.dp)) {
+                                    Icon(Icons.Default.FilterList, contentDescription = null, tint = AppColors.textTertiary, modifier = Modifier.size(48.dp))
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Text("No vouchers match your filters.", color = AppColors.textPrimary, fontSize = 15.sp, fontWeight = FontWeight.Medium)
+                                    Spacer(modifier = Modifier.height(6.dp))
+                                    Text("Adjust the filters or clear them to restore the full list.", color = AppColors.textSecondary, fontSize = 13.sp, textAlign = TextAlign.Center)
+                                    if (appliedFilterState.activeFilterCount > 0 || searchQuery.isNotBlank()) {
+                                        Spacer(modifier = Modifier.height(10.dp))
+                                        TextButton(onClick = {
+                                            searchQuery = ""
+                                            appliedFilterState = VoucherFilterState()
+                                            pendingFilterState = VoucherFilterState()
+                                        }) { Text("Clear Filters") }
+                                    }
+                                }
                             }
                         } else {
                             LazyColumn(
@@ -866,16 +1067,51 @@ fun VouchersScreen(
                     horizontalArrangement = Arrangement.End,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    OutlinedButton(onClick = { pendingFilter = selectedTypeFilter; showFilterSheet = true }, contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)) {
-                        Icon(Icons.Default.FilterList, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("Filter")
+                    BadgedBox(
+                        badge = {
+                            if (appliedFilterState.activeFilterCount > 0) {
+                                Badge(containerColor = AppColors.primary, contentColor = AppColors.textOnPrimary) {
+                                    Text(appliedFilterState.activeFilterCount.toString())
+                                }
+                            }
+                        }
+                    ) {
+                        OutlinedButton(onClick = { pendingFilterState = appliedFilterState; showFilterSheet = true }, contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)) {
+                            Icon(Icons.Default.FilterList, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Filter")
+                        }
                     }
                     Spacer(modifier = Modifier.width(8.dp))
-                    OutlinedButton(onClick = { pendingSort = sortOption; pendingStartDate = customStartDate; pendingEndDate = customEndDate; showSortSheet = true }, contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)) {
+                    OutlinedButton(onClick = { pendingSortOption = appliedSortOption; showSortSheet = true }, contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)) {
                         Icon(Icons.Default.KeyboardArrowDown, contentDescription = null, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text("Sort")
+                        Text(if (appliedSortOption == SORT_DEFAULT) "Sort" else "Sort: ${voucherSortLabel(appliedSortOption)}")
+                    }
+                }
+
+                if (appliedFilterState.activeFilterCount > 0) {
+                    FlowRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        appliedFilterState.toActiveChips().forEach { chip ->
+                            InputChip(
+                                selected = false,
+                                onClick = { appliedFilterState = appliedFilterState.removeFilter(chip.key) },
+                                label = { Text(chip.label) },
+                                trailingIcon = { Icon(Icons.Default.Close, contentDescription = null) }
+                            )
+                        }
+                        AssistChip(
+                            onClick = {
+                                appliedFilterState = VoucherFilterState()
+                                pendingFilterState = VoucherFilterState()
+                            },
+                            label = { Text("Clear All") },
+                            leadingIcon = { Icon(Icons.Default.Close, contentDescription = null) }
+                        )
                     }
                 }
 
@@ -909,7 +1145,7 @@ fun VouchersScreen(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
                     ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(24.dp)) {
                             Icon(
                                 imageVector = Icons.Default.FilterList,
                                 contentDescription = null,
@@ -917,7 +1153,17 @@ fun VouchersScreen(
                                 modifier = Modifier.size(48.dp)
                             )
                             Spacer(modifier = Modifier.height(8.dp))
-                            Text("No matching vouchers found.", color = AppColors.textSecondary, fontSize = 14.sp)
+                            Text("No vouchers match your filters.", color = AppColors.textPrimary, fontSize = 15.sp, fontWeight = FontWeight.Medium)
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text("Adjust the filters or clear them to restore the full list.", color = AppColors.textSecondary, fontSize = 13.sp, textAlign = TextAlign.Center)
+                            if (appliedFilterState.activeFilterCount > 0 || searchQuery.isNotBlank()) {
+                                Spacer(modifier = Modifier.height(10.dp))
+                                TextButton(onClick = {
+                                    searchQuery = ""
+                                    appliedFilterState = VoucherFilterState()
+                                    pendingFilterState = VoucherFilterState()
+                                }) { Text("Clear Filters") }
+                            }
                         }
                     }
                 } else {
