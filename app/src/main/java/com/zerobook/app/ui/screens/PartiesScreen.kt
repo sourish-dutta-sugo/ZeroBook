@@ -1016,9 +1016,7 @@ fun PartyDetailScreen(
         }
     ) { innerPadding ->
         if (party == null) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
-            }
+            PartyDetailSkeleton(innerPadding = innerPadding)
         } else {
             val p = party!!
             val pName = p.name
@@ -1196,6 +1194,46 @@ fun PartyDetailScreen(
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+
+@Composable
+private fun PartyDetailSkeleton(innerPadding: PaddingValues) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(AppColors.screenBg)
+            .padding(innerPadding)
+            .padding(start = 16.dp, end = 16.dp, bottom = 100.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp)
+    ) {
+        SkeletonCard(
+            modifier = Modifier
+                .fillMaxWidth()
+                .border(0.5.dp, Color(0xFFEAEAEA), RoundedCornerShape(8.dp))
+        ) {
+            repeat(3) {
+                SkeletonListItem(
+                    modifier = Modifier.fillMaxWidth(),
+                    lineCount = 1
+                )
+            }
+        }
+
+        SkeletonCard(modifier = Modifier.fillMaxWidth()) {
+            SkeletonText(
+                modifier = Modifier.fillMaxWidth(0.45f),
+                height = 18.dp
+            )
+            Spacer(modifier = Modifier.height(14.dp))
+            repeat(5) {
+                SkeletonListItem(
+                    modifier = Modifier.fillMaxWidth(),
+                    lineCount = 2
+                )
             }
         }
     }

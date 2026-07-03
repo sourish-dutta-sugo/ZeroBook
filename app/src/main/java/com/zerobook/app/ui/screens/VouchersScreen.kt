@@ -75,6 +75,9 @@ import com.zerobook.app.ui.animation.premiumFabEntrance
 import com.zerobook.app.ui.animation.pressScale
 import com.zerobook.app.ui.theme.AppColors
 import com.zerobook.app.ui.theme.Colors
+import com.zerobook.app.ui.theme.SkeletonCard
+import com.zerobook.app.ui.theme.SkeletonRoundedPlaceholder
+import com.zerobook.app.ui.theme.SkeletonText
 import com.zerobook.app.ui.theme.zeroBookInputColors
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.BackHandler
@@ -3816,12 +3819,7 @@ fun NewVoucherScreen(
                     tonalElevation = 4.dp
                 ) {
                     when {
-                        savedInvoiceLoading -> Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            CircularProgressIndicator()
-                        }
+                        savedInvoiceLoading -> VoucherPrintPreviewSkeleton()
                         savedInvoiceHtml != null -> {
                             val invoiceHtml = savedInvoiceHtml.orEmpty()
                             AndroidView(
@@ -4960,6 +4958,62 @@ fun StickyBottomBar(
                     }
                 }
             }
+        }
+    }
+}
+
+
+@Composable
+private fun VoucherPrintPreviewSkeleton() {
+    SkeletonCard(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(420.dp)
+            .padding(12.dp)
+    ) {
+        SkeletonRoundedPlaceholder(
+            modifier = Modifier.fillMaxWidth(),
+            height = 28.dp,
+            cornerRadius = 8.dp
+        )
+        Spacer(modifier = Modifier.height(12.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            SkeletonText(
+                modifier = Modifier.weight(1f),
+                height = 14.dp
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            SkeletonRoundedPlaceholder(
+                width = 96.dp,
+                height = 48.dp,
+                cornerRadius = 8.dp
+            )
+        }
+        Spacer(modifier = Modifier.height(18.dp))
+        repeat(3) {
+            SkeletonText(
+                modifier = Modifier.fillMaxWidth(),
+                height = 12.dp
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+        }
+        Spacer(modifier = Modifier.height(16.dp))
+        SkeletonRoundedPlaceholder(
+            modifier = Modifier.fillMaxWidth(),
+            height = 160.dp,
+            cornerRadius = 8.dp
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        repeat(4) {
+            SkeletonText(
+                modifier = Modifier.fillMaxWidth(),
+                height = 12.dp
+            )
+            Spacer(modifier = Modifier.height(8.dp))
         }
     }
 }
