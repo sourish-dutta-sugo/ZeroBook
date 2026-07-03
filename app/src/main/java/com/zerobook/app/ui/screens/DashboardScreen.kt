@@ -429,6 +429,11 @@ fun DashboardScreen(
         
         if (searchQuery.isBlank()) {
             if (showProgressTracker) {
+                val progressPercent by remember(netProfit, progressTarget) {
+                    derivedStateOf {
+                        ((netProfit / progressTarget.coerceAtLeast(1.0)) * 100.0).coerceIn(0.0, 100.0)
+                    }
+                }
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -443,10 +448,10 @@ fun DashboardScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text("${progressMetric} Progress", fontWeight = FontWeight.Bold, color = AppColors.textPrimary)
-                            Text("${String.format(Locale.US, "%.2f", ((netProfit / progressTarget.coerceAtLeast(1.0)) * 100.0).coerceIn(0.0, 100.0))}%", fontWeight = FontWeight.Bold, color = AppColors.primary)
+                            Text("${String.format(Locale.US, "%.2f", progressPercent)}%", fontWeight = FontWeight.Bold, color = AppColors.primary)
                         }
                         LinearProgressIndicator(
-                            progress = { ((netProfit / progressTarget.coerceAtLeast(1.0)) * 100.0).coerceIn(0.0, 100.0).toFloat() / 100f },
+                            progress = (progressPercent / 100f).toFloat(),
                             modifier = Modifier.fillMaxWidth().height(8.dp),
                             color = AppColors.primary,
                             trackColor = AppColors.border.copy(alpha = 0.3f)

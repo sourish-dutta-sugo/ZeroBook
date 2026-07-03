@@ -168,6 +168,46 @@ private fun voucherTypeLabel(type: String): String = when (type) {
     else -> type.replace('_', ' ').replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
 }
 
+private val voucherTypeFilterOptions = listOf(
+    "ALL",
+    "JOURNAL",
+    "SALE",
+    "PURCHASE",
+    "RECEIPT",
+    "PAYMENT",
+    "SALE_RETURN",
+    "PURCHASE_RETURN",
+    "DEBIT_NOTE",
+    "CREDIT_NOTE",
+    "BILLS_RECEIVABLE",
+    "BILLS_PAYABLE",
+    "QUOTATION",
+    "DELIVERY_CHALLAN",
+    "INCOME",
+    "EXPENSE"
+)
+
+private val voucherSortLabelOptions = listOf(
+    "DEFAULT" to "Default order",
+    "LATEST" to "Latest first",
+    "OLDEST" to "Oldest first",
+    "THIS_WEEK" to "This week",
+    "THIS_MONTH" to "This month",
+    "THIS_YEAR" to "This year",
+    "CUSTOM" to "Custom date range"
+)
+
+private val voucherListSortOptions = listOf(
+    "Newest First",
+    "Oldest First",
+    "Amount (High → Low)",
+    "Amount (Low → High)",
+    "Voucher Number (Ascending)",
+    "Voucher Number (Descending)",
+    "Party Name (A → Z)",
+    "Party Name (Z → A)"
+)
+
 private fun voucherBadgeColor(type: String): Color = AppColors.primary
 
 private fun sortedVouchersForDisplay(
@@ -474,8 +514,7 @@ fun VouchersScreen(
         ModalBottomSheet(onDismissRequest = { showFilterSheet = false }) {
             Column(modifier = Modifier.fillMaxWidth().padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text("Filter vouchers", fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
-                val filterOptions = listOf("ALL", "JOURNAL", "SALE", "PURCHASE", "RECEIPT", "PAYMENT", "SALE_RETURN", "PURCHASE_RETURN", "DEBIT_NOTE", "CREDIT_NOTE", "BILLS_RECEIVABLE", "BILLS_PAYABLE", "QUOTATION", "DELIVERY_CHALLAN", "INCOME", "EXPENSE")
-                filterOptions.forEach { type ->
+                voucherTypeFilterOptions.forEach { type ->
                     FilterChip(
                         selected = pendingFilter == type,
                         onClick = { pendingFilter = type },
@@ -502,16 +541,7 @@ fun VouchersScreen(
         ModalBottomSheet(onDismissRequest = { showSortSheet = false }) {
             Column(modifier = Modifier.fillMaxWidth().padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text("Sort vouchers", fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
-                val sortOptions = listOf(
-                    "DEFAULT" to "Default order",
-                    "LATEST" to "Latest first",
-                    "OLDEST" to "Oldest first",
-                    "THIS_WEEK" to "This week",
-                    "THIS_MONTH" to "This month",
-                    "THIS_YEAR" to "This year",
-                    "CUSTOM" to "Custom date range"
-                )
-                sortOptions.forEach { (value, label) ->
+                voucherSortLabelOptions.forEach { (value, label) ->
                     Row(
                         modifier = Modifier.fillMaxWidth().clickable { pendingSort = value },
                         verticalAlignment = Alignment.CenterVertically,
