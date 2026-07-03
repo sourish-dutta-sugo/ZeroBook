@@ -33,6 +33,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.runtime.*
+import androidx.compose.runtime.Immutable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -113,61 +114,69 @@ fun DashboardScreen(
     val firstDayOfMonth = calendar.timeInMillis
 
     // Calculates KPIs
-    val todaySales = remember(vouchers) {
-        vouchers.filter { it.type == "SALE" && it.date >= todayStart }.sumOf { it.netAmount }
+    val todaySales by remember(vouchers, todayStart) {
+        derivedStateOf {
+            vouchers.filter { it.type == "SALE" && it.date >= todayStart }.sumOf { it.netAmount }
+        }
     }
-    val todayPurchases = remember(vouchers) {
-        vouchers.filter { it.type == "PURCHASE" && it.date >= todayStart }.sumOf { it.netAmount }
+    val todayPurchases by remember(vouchers, todayStart) {
+        derivedStateOf {
+            vouchers.filter { it.type == "PURCHASE" && it.date >= todayStart }.sumOf { it.netAmount }
+        }
     }
-    val thisMonthSales = remember(vouchers) {
-        vouchers.filter { it.type == "SALE" && it.date >= firstDayOfMonth }.sumOf { it.netAmount }
+    val thisMonthSales by remember(vouchers, firstDayOfMonth) {
+        derivedStateOf {
+            vouchers.filter { it.type == "SALE" && it.date >= firstDayOfMonth }.sumOf { it.netAmount }
+        }
     }
 
-    // Ledger Balances calculation
-    var cashBalance by remember { mutableStateOf(0.0) }
-    var bankBalance by remember { mutableStateOf(0.0) }
-    var outstandingReceivable by remember { mutableStateOf(0.0) }
-    var outstandingPayable by remember { mutableStateOf(0.0) }
+    val balanceSnapshot by remember(ledgerEntries) {
+        derivedStateOf {
+            var cash = 0.0
+            var bank = 0.0
+            val partyBalances = mutableMapOf<String, Double>()
 
-    LaunchedEffect(ledgerEntries) {
-        var cash = 0.0
-        var bank = 0.0
-        val partyBalances = mutableMapOf<String, Double>()
-
-        ledgerEntries.forEach { entry ->
-            val change = entry.debit - entry.credit
-            when {
-                entry.accountHead == "Cash" -> cash += change
-                entry.accountHead == "Bank" -> bank += change
-                entry.accountHead.startsWith("Party:") -> {
-                    partyBalances[entry.accountHead] = (partyBalances[entry.accountHead] ?: 0.0) + change
+            ledgerEntries.forEach { entry ->
+                val change = entry.debit - entry.credit
+                when {
+                    entry.accountHead == "Cash" -> cash += change
+                    entry.accountHead == "Bank" -> bank += change
+                    entry.accountHead.startsWith("Party:") -> {
+                        partyBalances[entry.accountHead] = (partyBalances[entry.accountHead] ?: 0.0) + change
+                    }
                 }
             }
-        }
 
-        var rec = 0.0
-        var pay = 0.0
-        partyBalances.forEach { (_, netBalance) ->
-            if (netBalance > 0) {
-                rec += netBalance
-            } else if (netBalance < 0) {
-                pay += Math.abs(netBalance)
+            var rec = 0.0
+            var pay = 0.0
+            partyBalances.values.forEach { netBalance ->
+                if (netBalance > 0) {
+                    rec += netBalance
+                } else if (netBalance < 0) {
+                    pay += kotlin.math.abs(netBalance)
+                }
             }
+
+            DashboardBalanceSnapshot(
+                cashBalance = cash,
+                bankBalance = bank,
+                outstandingReceivable = rec,
+                outstandingPayable = pay
+            )
         }
-
-        cashBalance = cash
-        bankBalance = bank
-        outstandingReceivable = rec
-        outstandingPayable = pay
     }
 
-    val netProfit = remember(vouchers) {
-        val sales = vouchers.filter { it.type == "SALE" && it.date >= firstDayOfMonth }.sumOf { it.taxableAmount }
-        val purchase = vouchers.filter { it.type == "PURCHASE" && it.date >= firstDayOfMonth }.sumOf { it.taxableAmount }
-        sales - purchase // Gross margin approximation as profit
+    val netProfit by remember(vouchers, firstDayOfMonth) {
+        derivedStateOf {
+            val sales = vouchers.filter { it.type == "SALE" && it.date >= firstDayOfMonth }.sumOf { it.taxableAmount }
+            val purchase = vouchers.filter { it.type == "PURCHASE" && it.date >= firstDayOfMonth }.sumOf { it.taxableAmount }
+            sales - purchase // Gross margin approximation as profit
+        }
     }
-    val lowStockProducts = remember(products) {
-        products.filter { it.enableStockAlert && it.currentStock <= it.lowStockThreshold }
+    val lowStockProducts by remember(products) {
+        derivedStateOf {
+            products.filter { it.enableStockAlert && it.currentStock <= it.lowStockThreshold }
+        }
     }
 
     LaunchedEffect(Unit) {
@@ -177,8 +186,9 @@ fun DashboardScreen(
         progressTarget = AppPreferences.getProgressTrackerTarget(context).toDoubleOrNull() ?: 200000.0
     }
 
-    val visibleTransactions = remember(vouchers, activeTransactionFilter, activeTransactionSort) {
-        val filtered = when (activeTransactionFilter) {
+    val visibleTransactions by remember(vouchers, activeTransactionFilter, activeTransactionSort) {
+        derivedStateOf {
+            val filtered = when (activeTransactionFilter) {
             "Sales" -> vouchers.filter { it.type == "SALE" }
             "Purchase" -> vouchers.filter { it.type == "PURCHASE" }
             "Receipt" -> vouchers.filter { it.type == "RECEIPT" }
@@ -201,15 +211,22 @@ fun DashboardScreen(
             "Voucher Number (Descending)" -> filtered.sortedByDescending { it.voucherNo.ifBlank { it.type } }
             "Party Name (A → Z)" -> filtered.sortedBy { it.partyId ?: "Cash" }
             "Party Name (Z → A)" -> filtered.sortedByDescending { it.partyId ?: "Cash" }
-            else -> filtered.sortedByDescending { it.date }
+                else -> filtered.sortedByDescending { it.date }
+            }
         }
     }
 
-    val recentTransactions = remember(visibleTransactions) {
-        visibleTransactions.take(8)
+    val recentTransactions by remember(visibleTransactions) {
+        derivedStateOf { visibleTransactions.take(8) }
     }
 
-    val showGstCard = remember(profile) { profile?.gstin?.isNotBlank() == true }
+    val showGstCard by remember(profile) { derivedStateOf { profile?.gstin?.isNotBlank() == true } }
+    val inventoryValue by remember(products) {
+        derivedStateOf { products.sumOf { it.currentStock * it.saleRate } }
+    }
+    val gstValue by remember(vouchers) {
+        derivedStateOf { vouchers.sumOf { it.cgst + it.sgst + it.igst } }
+    }
 
     BackHandler(enabled = searchQuery.isNotBlank()) {
         searchQuery = ""
@@ -492,13 +509,13 @@ fun DashboardScreen(
                 add(KpiDetails("Today's Purchases", Utils.formatIndianCurrency(todayPurchases), "", Color(0xFFBAC5D6)))
                 add(KpiDetails("This Month's Sales", Utils.formatIndianCurrency(thisMonthSales), "", Color(0xFF28A745)))
                 add(KpiDetails("Net Profit (Est.)", Utils.formatIndianCurrency(netProfit), "", if (netProfit >= 0) Color(0xFF28A745) else Color(0xFFDC3545)))
-                add(KpiDetails("Receivables (Dr)", Utils.formatIndianCurrency(outstandingReceivable), "", Color(0xFFDC3545)))
-                add(KpiDetails("Payables (Cr)", Utils.formatIndianCurrency(outstandingPayable), "", Color(0xFF9C27B0)))
-                add(KpiDetails("Cash Account", Utils.formatIndianCurrency(cashBalance), "", Color(0xFFFD7E14)))
-                add(KpiDetails("Bank & UPI", Utils.formatIndianCurrency(bankBalance), "", Color(0xFF17A2B8)))
-                add(KpiDetails("Inventory", Utils.formatIndianCurrency(products.sumOf { it.currentStock * it.saleRate }), "", Color(0xFF6F42C1)))
+                add(KpiDetails("Receivables (Dr)", Utils.formatIndianCurrency(balanceSnapshot.outstandingReceivable), "", Color(0xFFDC3545)))
+                add(KpiDetails("Payables (Cr)", Utils.formatIndianCurrency(balanceSnapshot.outstandingPayable), "", Color(0xFF9C27B0)))
+                add(KpiDetails("Cash Account", Utils.formatIndianCurrency(balanceSnapshot.cashBalance), "", Color(0xFFFD7E14)))
+                add(KpiDetails("Bank & UPI", Utils.formatIndianCurrency(balanceSnapshot.bankBalance), "", Color(0xFF17A2B8)))
+                add(KpiDetails("Inventory", Utils.formatIndianCurrency(inventoryValue), "", Color(0xFF6F42C1)))
                 if (showGstCard) {
-                    add(KpiDetails("GST", Utils.formatIndianCurrency(vouchers.sumOf { it.cgst + it.sgst + it.igst }), "", Color(0xFF0D9488)))
+                    add(KpiDetails("GST", Utils.formatIndianCurrency(gstValue), "", Color(0xFF0D9488)))
                 }
             }
 
@@ -879,6 +896,15 @@ fun DashboardScreen(
     }
 }
 
+@Immutable
+data class DashboardBalanceSnapshot(
+    val cashBalance: Double = 0.0,
+    val bankBalance: Double = 0.0,
+    val outstandingReceivable: Double = 0.0,
+    val outstandingPayable: Double = 0.0
+)
+
+@Immutable
 data class KpiDetails(val title: String, val amount: String, val subt: String, val highlight: Color)
 
 @Composable

@@ -54,6 +54,9 @@ fun PartiesScreen(
 ) {
     val parties by viewModel.parties.collectAsState()
     val ledgerEntries by viewModel.ledgerEntries.collectAsState()
+    val partiesById by remember(parties) {
+        derivedStateOf { parties.associateBy { it.id } }
+    }
 
     var searchQuery by remember { mutableStateOf("") }
     var selectedTypeFilter by remember { mutableStateOf("ALL") } // "ALL", "CUSTOMER", "SUPPLIER"
@@ -61,25 +64,33 @@ fun PartiesScreen(
     var editingPartyId by remember { mutableStateOf<String?>(null) }
 
     // Computes dynamic balances per party
-    val partyBalances = remember(parties, ledgerEntries) {
-        val balances = mutableMapOf<String, Double>()
-        parties.forEach { p ->
-            var bal = if (p.balanceType == "DR") p.openingBalance else -p.openingBalance
-            ledgerEntries.filter { it.accountHead == "Party: ${p.name}" }.forEach { entry ->
-                bal += (entry.debit - entry.credit)
-            }
-            balances[p.id] = bal
+    val ledgerBalancesByAccountHead by remember(ledgerEntries) {
+        derivedStateOf {
+            ledgerEntries
+                .groupBy { it.accountHead }
+                .mapValues { (_, entries) -> entries.sumOf { it.debit - it.credit } }
         }
-        balances
     }
 
-    val filteredParties = remember(parties, searchQuery, selectedTypeFilter) {
-        parties.filter { p ->
+    val partyBalances by remember(parties, ledgerBalancesByAccountHead) {
+        derivedStateOf {
+            parties.associate { party ->
+                val openingBalance = if (party.balanceType == "DR") party.openingBalance else -party.openingBalance
+                val ledgerBalance = ledgerBalancesByAccountHead["Party: ${party.name}"] ?: 0.0
+                party.id to (openingBalance + ledgerBalance)
+            }
+        }
+    }
+
+    val filteredParties by remember(parties, searchQuery, selectedTypeFilter) {
+        derivedStateOf {
+            parties.filter { p ->
             val matchesSearch = p.name.contains(searchQuery, ignoreCase = true) ||
                     (p.phone.contains(searchQuery)) ||
                     (p.gstin?.contains(searchQuery, ignoreCase = true) ?: false)
             val matchesType = selectedTypeFilter == "ALL" || p.type == selectedTypeFilter || p.type == "BOTH"
-            matchesSearch && matchesType
+                matchesSearch && matchesType
+            }
         }
     }
 
@@ -173,7 +184,7 @@ fun PartiesScreen(
                                     .imePadding(),
                                 contentPadding = PaddingValues(start = 0.dp, end = 0.dp, bottom = 120.dp)
                             ) {
-                                items(filteredParties) { party ->
+                                items(filteredParties, key = { it.id }) { party ->
                                     val currentBal = partyBalances[party.id] ?: 0.0
                                     val isSelected = selectedPartyId == party.id
 
@@ -279,7 +290,7 @@ fun PartiesScreen(
                 } else if (editingPartyId != null) {
                     EditPartyForm(
                         viewModel = viewModel,
-                        party = parties.firstOrNull { it.id == editingPartyId },
+                        party = editingPartyId?.let { partiesById[it] },
                         onDismiss = { editingPartyId = null }
                     )
                 } else {
@@ -307,7 +318,7 @@ fun PartiesScreen(
         } else if (editingPartyId != null) {
             EditPartyForm(
                 viewModel = viewModel,
-                party = parties.firstOrNull { it.id == editingPartyId },
+                party = editingPartyId?.let { partiesById[it] },
                 onDismiss = { editingPartyId = null }
             )
         } else {
@@ -414,7 +425,7 @@ fun PartiesScreen(
                                 .imePadding(),
                             contentPadding = PaddingValues(start = 0.dp, end = 0.dp, bottom = 120.dp)
                         ) {
-                            items(filteredParties) { party ->
+                            items(filteredParties, key = { it.id }) { party ->
                                 val currentBal = partyBalances[party.id] ?: 0.0
 
                                 Card(
@@ -992,12 +1003,11 @@ fun PartyDetailScreen(
     onNavigateBack: () -> Unit
 ) {
     val context = LocalContext.current
-    var party by remember { mutableStateOf<Party?>(null) }
+    val parties by viewModel.parties.collectAsState()
     val profile by viewModel.profile.collectAsState()
     val ledgerEntries by viewModel.ledgerEntries.collectAsState()
-
-    LaunchedEffect(partyId) {
-        party = viewModel.getPartyById(partyId)
+    val party = remember(parties, partyId) {
+        parties.firstOrNull { it.id == partyId }
     }
 
     Scaffold(
@@ -1171,7 +1181,7 @@ fun PartyDetailScreen(
                                     .imePadding(),
                                 contentPadding = PaddingValues(start = 0.dp, end = 0.dp, bottom = 120.dp)
                             ) {
-                                items(statementRows) { row ->
+                                items(statementRows, key = { it.entry.id }) { row ->
                                     Row(
                                         modifier = Modifier
                                             .fillMaxWidth()

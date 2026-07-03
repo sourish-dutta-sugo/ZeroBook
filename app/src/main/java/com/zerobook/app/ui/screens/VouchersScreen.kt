@@ -414,6 +414,9 @@ fun VouchersScreen(
 ) {
     val vouchers by viewModel.vouchers.collectAsState()
     val parties by viewModel.parties.collectAsState()
+    val partyNameById by remember(parties) {
+        derivedStateOf { parties.associate { it.id to it.name } }
+    }
 
     var searchQuery by remember { mutableStateOf("") }
     var selectedTypeFilter by remember { mutableStateOf("ALL") }
@@ -429,9 +432,10 @@ fun VouchersScreen(
     var customStartDate by remember { mutableStateOf<Long?>(null) }
     var customEndDate by remember { mutableStateOf<Long?>(null) }
 
-    val filteredVouchers = remember(vouchers, searchQuery, selectedTypeFilter, parties) {
-        vouchers.filter { voucher ->
-            val partyName = parties.find { it.id == voucher.partyId }?.name ?: "Cash / Bank"
+    val filteredVouchers by remember(vouchers, searchQuery, selectedTypeFilter, partyNameById) {
+        derivedStateOf {
+            vouchers.filter { voucher ->
+                val partyName = voucher.partyId?.let { partyNameById[it] } ?: "Cash / Bank"
             val matchesSearch = voucher.voucherNo.contains(searchQuery, ignoreCase = true) ||
                     partyName.contains(searchQuery, ignoreCase = true)
             val matchesType = when (selectedTypeFilter) {
@@ -440,21 +444,29 @@ fun VouchersScreen(
                 "EXPENSE" -> voucher.type in setOf("EXPENSE", "PURCHASE", "PAYMENT")
                 else -> voucher.type == selectedTypeFilter
             }
-            matchesSearch && matchesType
+                matchesSearch && matchesType
+            }
         }
     }
 
-    val displayedVouchers = remember(filteredVouchers, sortOption, customStartDate, customEndDate) {
-        sortedVouchersForDisplay(filteredVouchers, sortOption, customStartDate, customEndDate)
+    val displayedVouchers by remember(filteredVouchers, sortOption, customStartDate, customEndDate) {
+        derivedStateOf {
+            sortedVouchersForDisplay(filteredVouchers, sortOption, customStartDate, customEndDate)
+        }
     }
 
     var selectedVoucherId by remember { mutableStateOf<String?>(null) }
+    val desktopVoucherListState = rememberLazyListState()
+    val mobileVoucherListState = rememberLazyListState()
     val screenWidthDp = LocalConfiguration.current.screenWidthDp
     val isTablet = screenWidthDp >= 600
 
-    LaunchedEffect(displayedVouchers, isDesktop) {
-        if (isDesktop && selectedVoucherId == null && displayedVouchers.isNotEmpty()) {
-            selectedVoucherId = displayedVouchers.first().id
+    LaunchedEffect(displayedVouchers, isDesktop, selectedVoucherId) {
+        if (isDesktop) {
+            val selectedStillVisible = selectedVoucherId != null && displayedVouchers.any { it.id == selectedVoucherId }
+            if (!selectedStillVisible) {
+                selectedVoucherId = displayedVouchers.firstOrNull()?.id
+            }
         }
     }
 
@@ -634,11 +646,12 @@ fun VouchersScreen(
                             }
                         } else {
                             LazyColumn(
+                                state = desktopVoucherListState,
                                 verticalArrangement = Arrangement.spacedBy(8.dp),
                                 modifier = Modifier.fillMaxSize()
                             ) {
-                                items(displayedVouchers) { voucher ->
-                                    val partyName = parties.find { it.id == voucher.partyId }?.name ?: "Cash / Bank Account"
+                                items(displayedVouchers, key = { it.id }) { voucher ->
+                                    val partyName = voucher.partyId?.let { partyNameById[it] } ?: "Cash / Bank Account"
                                     val isSelected = selectedVoucherId == voucher.id
                                     Card(
                                         modifier = Modifier
@@ -838,11 +851,12 @@ fun VouchersScreen(
                     }
                 } else {
                     LazyColumn(
+                        state = mobileVoucherListState,
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                         modifier = Modifier.fillMaxSize()
                     ) {
-                        items(displayedVouchers) { voucher ->
-                            val partyName = parties.find { it.id == voucher.partyId }?.name ?: "Cash / Bank Account"
+                        items(displayedVouchers, key = { it.id }) { voucher ->
+                            val partyName = voucher.partyId?.let { partyNameById[it] } ?: "Cash / Bank Account"
 
                             Card(
                                 modifier = Modifier
