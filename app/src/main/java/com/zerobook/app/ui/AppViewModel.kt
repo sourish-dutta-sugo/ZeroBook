@@ -345,17 +345,46 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         InvoiceGenerator.buildRenderBundle(getApplication(), voucherId)
 
     suspend fun getSaleVoucherReferenceFields(voucherId: String): Pair<String, String> {
-        return repository.getVoucherReferenceFields(voucherId)
+        val db = AppDatabase.getDatabase(getApplication())
+        val cursor = db.openHelper.readableDatabase.query(
+            """
+            SELECT COALESCE(NULLIF(reference_no, ''), NULLIF(referenceNo, ''), ''),
+                   COALESCE(NULLIF(other_references, ''), '')
+            FROM vouchers
+            WHERE id = ?
+            """.trimIndent(),
+            arrayOf(voucherId)
+        )
+        cursor.use {
+            return if (it.moveToFirst()) {
+                it.getString(0).orEmpty() to it.getString(1).orEmpty()
+            } else {
+                "" to ""
+            }
+        }
     }
 
     fun syncSaleVoucherReferenceFields(voucherId: String, referenceNo: String, otherReferences: String) {
         viewModelScope.launch(Dispatchers.IO) {
-            repository.updateVoucherReferenceFields(voucherId, referenceNo, otherReferences)
+            val db = AppDatabase.getDatabase(getApplication())
+            db.openHelper.writableDatabase.execSQL(
+                """
+                UPDATE vouchers
+                SET reference_no = ?,
+                    other_references = ?
+                WHERE id = ?
+                """.trimIndent(),
+                arrayOf(referenceNo, otherReferences, voucherId)
+            )
         }
     }
 
     private suspend fun syncBusinessProfileTerms(termsAndConditions: String) {
-        repository.updateBusinessProfileTerms(termsAndConditions)
+        val db = AppDatabase.getDatabase(getApplication())
+        db.openHelper.writableDatabase.execSQL(
+            "UPDATE business_profile SET terms_and_conditions = ? WHERE id = 1",
+            arrayOf(termsAndConditions)
+        )
     }
 
     fun saveTransaction(tx: BankCashTransaction, onSuccess: () -> Unit) {

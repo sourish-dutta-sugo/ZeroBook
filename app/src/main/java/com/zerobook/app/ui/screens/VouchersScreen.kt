@@ -426,29 +426,23 @@ fun VouchersScreen(
     var customStartDate by remember { mutableStateOf<Long?>(null) }
     var customEndDate by remember { mutableStateOf<Long?>(null) }
 
-    val partyNameLookup = remember(parties) { parties.associateBy { it.id } }
-
-    val filteredVouchers by remember(vouchers, searchQuery, selectedTypeFilter, parties) {
-        derivedStateOf {
-            vouchers.filter { voucher ->
-                val partyName = partyNameLookup[voucher.partyId]?.name ?: "Cash / Bank"
-                val matchesSearch = voucher.voucherNo.contains(searchQuery, ignoreCase = true) ||
-                        partyName.contains(searchQuery, ignoreCase = true)
-                val matchesType = when (selectedTypeFilter) {
-                    "ALL" -> true
-                    "INCOME" -> voucher.type in setOf("INCOME", "SALE", "RECEIPT")
-                    "EXPENSE" -> voucher.type in setOf("EXPENSE", "PURCHASE", "PAYMENT")
-                    else -> voucher.type == selectedTypeFilter
-                }
-                matchesSearch && matchesType
+    val filteredVouchers = remember(vouchers, searchQuery, selectedTypeFilter, parties) {
+        vouchers.filter { voucher ->
+            val partyName = parties.find { it.id == voucher.partyId }?.name ?: "Cash / Bank"
+            val matchesSearch = voucher.voucherNo.contains(searchQuery, ignoreCase = true) ||
+                    partyName.contains(searchQuery, ignoreCase = true)
+            val matchesType = when (selectedTypeFilter) {
+                "ALL" -> true
+                "INCOME" -> voucher.type in setOf("INCOME", "SALE", "RECEIPT")
+                "EXPENSE" -> voucher.type in setOf("EXPENSE", "PURCHASE", "PAYMENT")
+                else -> voucher.type == selectedTypeFilter
             }
+            matchesSearch && matchesType
         }
     }
 
-    val displayedVouchers by remember(filteredVouchers, sortOption, customStartDate, customEndDate) {
-        derivedStateOf {
-            sortedVouchersForDisplay(filteredVouchers, sortOption, customStartDate, customEndDate)
-        }
+    val displayedVouchers = remember(filteredVouchers, sortOption, customStartDate, customEndDate) {
+        sortedVouchersForDisplay(filteredVouchers, sortOption, customStartDate, customEndDate)
     }
 
     var selectedVoucherId by remember { mutableStateOf<String?>(null) }
@@ -640,8 +634,8 @@ fun VouchersScreen(
                                 verticalArrangement = Arrangement.spacedBy(8.dp),
                                 modifier = Modifier.fillMaxSize()
                             ) {
-                                items(displayedVouchers, key = { it.id }) { voucher ->
-                                    val partyName = partyNameLookup[voucher.partyId]?.name ?: "Cash / Bank Account"
+                                items(displayedVouchers) { voucher ->
+                                    val partyName = parties.find { it.id == voucher.partyId }?.name ?: "Cash / Bank Account"
                                     val isSelected = selectedVoucherId == voucher.id
                                     Card(
                                         modifier = Modifier

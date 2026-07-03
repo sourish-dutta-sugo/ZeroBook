@@ -36,7 +36,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import coil.compose.AsyncImage
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -1741,8 +1740,8 @@ fun SettingsMenuSection(
             .background(AppColors.screenBg)
             .verticalScroll(scrollState)
             .imePadding()
-            .padding(start = 18.dp, top = 18.dp, end = 18.dp, bottom = 96.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp)
+            .padding(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 80.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         // Menu items
         SettingsMenuCard(
@@ -1801,65 +1800,54 @@ fun SettingsMenuSection(
             onClick = { onSelect("ABOUT") }
         )
 
-        Spacer(modifier = Modifier.height(4.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
+        // Backup Section Card
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .shadow(3.dp, RoundedCornerShape(20.dp), clip = false)
-                .border(1.dp, AppColors.border.copy(alpha = 0.65f), RoundedCornerShape(20.dp)),
-            shape = RoundedCornerShape(20.dp),
-            colors = CardDefaults.cardColors(containerColor = AppColors.cardBg),
-            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+                .border(1.dp, AppColors.border, RoundedCornerShape(12.dp)),
+            colors = CardDefaults.cardColors(containerColor = AppColors.cardBg)
         ) {
-            Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text(
-                    "BACKUP & RESTORE DATA",
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 12.sp,
-                    letterSpacing = 0.8.sp,
-                    color = AppColors.textSecondary
-                )
+            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("BACKUP & RESTORE DATA", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = AppColors.textSecondary)
                 Text(
                     "Export your complete SQLite database file directly as an encrypted local backup to safe-keep transaction ledgers.",
-                    fontSize = 12.sp,
-                    lineHeight = 18.sp,
+                    fontSize = 11.sp,
                     color = AppColors.textSecondary
                 )
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     Button(
-                        onClick = { exportCsv() },
-                        shape = RoundedCornerShape(12.dp),
+                        onClick = {
+                            exportCsv()
+                        },
+                        shape = RoundedCornerShape(8.dp),
                         modifier = Modifier
                             .weight(1f)
-                            .height(44.dp)
                             .pressScale(),
-                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 0.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = AppColors.primary,
                             contentColor = AppColors.textOnPrimary
                         )
                     ) {
-                        Text("Export to CSV", fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                        Text("Export to CSV", fontSize = 11.sp)
                     }
                     OutlinedButton(
                         onClick = { importCsv() },
-                        shape = RoundedCornerShape(12.dp),
+                        shape = RoundedCornerShape(8.dp),
                         modifier = Modifier
                             .weight(1f)
-                            .height(44.dp)
-                            .pressScale(),
-                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 0.dp)
+                            .pressScale()
                     ) {
-                        Text("Import CSV", fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                        Text("Import CSV", fontSize = 11.sp)
                     }
                 }
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     OutlinedButton(
                         onClick = {
@@ -1870,14 +1858,12 @@ fun SettingsMenuSection(
                                 Toast.makeText(context, "Backup failed", Toast.LENGTH_LONG).show()
                             }
                         },
-                        shape = RoundedCornerShape(12.dp),
+                        shape = RoundedCornerShape(8.dp),
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .height(44.dp)
-                            .pressScale(),
-                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 0.dp)
+                            .weight(1f)
+                            .pressScale()
                     ) {
-                        Text("Backup Database", fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                        Text("Backup Database", fontSize = 11.sp)
                     }
                 }
             }
@@ -1926,15 +1912,10 @@ fun ProgressTrackerSettingsScreen(onBackToMenu: () -> Unit) {
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .shadow(3.dp, RoundedCornerShape(20.dp), clip = false)
-                    .border(1.dp, AppColors.border.copy(alpha = 0.65f), RoundedCornerShape(20.dp)),
-                shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = AppColors.cardBg),
-                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+                modifier = Modifier.fillMaxWidth().border(1.dp, AppColors.border, RoundedCornerShape(16.dp)),
+                colors = CardDefaults.cardColors(containerColor = AppColors.cardBg)
             ) {
-                Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text("Progress Tracker", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = AppColors.textPrimary)
                     Text("Enable a compact progress tracker on the dashboard and keep it connected to live accounting data.", fontSize = 12.sp, color = AppColors.textSecondary)
                     Row(
@@ -1992,14 +1973,8 @@ fun ProgressTrackerSettingsScreen(onBackToMenu: () -> Unit) {
             }
 
             Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .shadow(2.dp, RoundedCornerShape(18.dp), clip = false)
-                    .border(1.dp, AppColors.border.copy(alpha = 0.65f), RoundedCornerShape(18.dp))
-                    .premiumClickable { },
-                shape = RoundedCornerShape(18.dp),
-                colors = CardDefaults.cardColors(containerColor = AppColors.cardBg),
-                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+                modifier = Modifier.fillMaxWidth().border(1.dp, AppColors.border, RoundedCornerShape(16.dp)).premiumClickable { },
+                colors = CardDefaults.cardColors(containerColor = AppColors.cardBg)
             ) {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text("Other Settings", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = AppColors.textPrimary)
@@ -2021,11 +1996,8 @@ fun SettingsMenuCard(
         modifier = Modifier
             .fillMaxWidth()
             .premiumClickable { onClick() }
-            .shadow(2.dp, RoundedCornerShape(18.dp), clip = false)
-            .border(1.dp, AppColors.border.copy(alpha = 0.7f), RoundedCornerShape(18.dp)),
-        shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(containerColor = AppColors.cardBg),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+            .border(1.dp, AppColors.border, RoundedCornerShape(16.dp)),
+        colors = CardDefaults.cardColors(containerColor = AppColors.cardBg)
     ) {
         Row(
             modifier = Modifier.padding(16.dp).fillMaxWidth(),
@@ -2034,39 +2006,31 @@ fun SettingsMenuCard(
         ) {
             Row(
                 modifier = Modifier.weight(1f),
-                horizontalArrangement = Arrangement.spacedBy(14.dp),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(46.dp)
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(AppColors.primary.copy(alpha = 0.12f)),
-                    contentAlignment = Alignment.Center
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = AppColors.primary.copy(alpha = 0.12f)),
+                    shape = RoundedCornerShape(6.dp)
                 ) {
                     Icon(
                         imageVector = icon,
                         contentDescription = null,
                         tint = AppColors.primary,
-                        modifier = Modifier.size(22.dp)
+                        modifier = Modifier.padding(10.dp).size(24.dp)
                     )
                 }
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(2.dp)
-                ) {
-                    Text(text = title, fontWeight = FontWeight.SemiBold, fontSize = 15.sp, color = AppColors.textPrimary)
-                    Text(text = description, color = AppColors.textSecondary, fontSize = 12.sp, lineHeight = 17.sp)
+                Column {
+                    Text(text = title, fontWeight = FontWeight.Bold, fontSize = 15.sp, color = AppColors.textPrimary)
+                    Text(text = description, color = AppColors.textSecondary, fontSize = 11.sp)
                 }
             }
-            Box(modifier = Modifier.size(28.dp), contentAlignment = Alignment.Center) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                    contentDescription = null,
-                    tint = AppColors.textTertiary,
-                    modifier = Modifier.size(20.dp)
-                )
-            }
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                contentDescription = null,
+                tint = AppColors.textTertiary,
+                modifier = Modifier.size(20.dp)
+            )
         }
     }
 }
