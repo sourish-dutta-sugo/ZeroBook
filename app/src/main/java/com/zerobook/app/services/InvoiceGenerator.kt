@@ -1218,9 +1218,10 @@ fun printInvoice(
     webView.webViewClient = object : WebViewClient() {
         override fun onPageFinished(view: WebView?, url: String?) {
             Handler(Looper.getMainLooper()).postDelayed({
+                val activeView = view ?: return@postDelayed
                 val printManager = context.getSystemService(Context.PRINT_SERVICE) as PrintManager
                 val safeName = voucherNo.replace("/", "-")
-                val adapter = view!!.createPrintDocumentAdapter(safeName)
+                val adapter = activeView.createPrintDocumentAdapter(safeName)
                 printManager.print(
                     safeName,
                     adapter,
@@ -1228,6 +1229,7 @@ fun printInvoice(
                         .setMediaSize(PrintAttributes.MediaSize.ISO_A4)
                         .build()
                 )
+                activeView.destroy()
             }, 500)
         }
     }

@@ -33,6 +33,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
@@ -450,24 +451,28 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 val url = java.net.URL("https://api.postalpincode.in/pincode/$pincode")
-                val connection = url.openConnection() as java.net.HttpURLConnection
-                connection.requestMethod = "GET"
-                connection.connectTimeout = 5000
-                connection.readTimeout = 5000
-
-                val responseText = connection.inputStream.bufferedReader().use { it.readText() }
+                val connection = (url.openConnection() as java.net.HttpURLConnection).apply {
+                    requestMethod = "GET"
+                    connectTimeout = 5000
+                    readTimeout = 5000
+                }
+                val responseText = try {
+                    connection.inputStream.bufferedReader().use { it.readText() }
+                } finally {
+                    connection.disconnect()
+                }
                 val districtRegex = """"District"\s*:\s*"([^"]+)"""".toRegex()
                 val stateRegex = """"State"\s*:\s*"([^"]+)"""".toRegex()
 
                 val district = districtRegex.find(responseText)?.groupValues?.get(1)
                 val state = stateRegex.find(responseText)?.groupValues?.get(1)
 
-                viewModelScope.launch(Dispatchers.Main) {
+                withContext(Dispatchers.Main) {
                     onResult(district, state)
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
-                viewModelScope.launch(Dispatchers.Main) {
+                withContext(Dispatchers.Main) {
                     onResult(null, null)
                 }
             }
@@ -478,23 +483,27 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 val url = java.net.URL("https://ifsc.razorpay.com/$ifsc")
-                val connection = url.openConnection() as java.net.HttpURLConnection
-                connection.requestMethod = "GET"
-                connection.connectTimeout = 5000
-                connection.readTimeout = 5000
-
-                val responseText = connection.inputStream.bufferedReader().use { it.readText() }
+                val connection = (url.openConnection() as java.net.HttpURLConnection).apply {
+                    requestMethod = "GET"
+                    connectTimeout = 5000
+                    readTimeout = 5000
+                }
+                val responseText = try {
+                    connection.inputStream.bufferedReader().use { it.readText() }
+                } finally {
+                    connection.disconnect()
+                }
                 val bankRegex = """"BANK"\s*:\s*"([^"]+)"""".toRegex()
                 val branchRegex = """"BRANCH"\s*:\s*"([^"]+)"""".toRegex()
                 val bank = bankRegex.find(responseText)?.groupValues?.get(1)
                 val branch = branchRegex.find(responseText)?.groupValues?.get(1)
 
-                viewModelScope.launch(Dispatchers.Main) {
+                withContext(Dispatchers.Main) {
                     onResult(bank, branch)
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
-                viewModelScope.launch(Dispatchers.Main) {
+                withContext(Dispatchers.Main) {
                     onResult(null, null)
                 }
             }
@@ -505,12 +514,16 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 val url = java.net.URL("https://api.copreco.com/gstin/$gstin")
-                val connection = url.openConnection() as java.net.HttpURLConnection
-                connection.requestMethod = "GET"
-                connection.connectTimeout = 5000
-                connection.readTimeout = 5000
-
-                val responseText = connection.inputStream.bufferedReader().use { it.readText() }
+                val connection = (url.openConnection() as java.net.HttpURLConnection).apply {
+                    requestMethod = "GET"
+                    connectTimeout = 5000
+                    readTimeout = 5000
+                }
+                val responseText = try {
+                    connection.inputStream.bufferedReader().use { it.readText() }
+                } finally {
+                    connection.disconnect()
+                }
                 val tradeNameRegex = """"tradeNam"\s*:\s*"([^"]+)"""".toRegex()
                 val legalNameRegex = """"lgnm"\s*:\s*"([^"]+)"""".toRegex()
                 val legalNameAltRegex = """"legalName"\s*:\s*"([^"]+)"""".toRegex()
@@ -519,12 +532,12 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                 val legal = legalNameRegex.find(responseText)?.groupValues?.get(1)
                     ?: legalNameAltRegex.find(responseText)?.groupValues?.get(1)
 
-                viewModelScope.launch(Dispatchers.Main) {
+                withContext(Dispatchers.Main) {
                     onResult(trade, legal)
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
-                viewModelScope.launch(Dispatchers.Main) {
+                withContext(Dispatchers.Main) {
                     onResult(null, null)
                 }
             }

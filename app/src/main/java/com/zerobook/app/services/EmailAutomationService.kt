@@ -81,12 +81,13 @@ Thank you.
     fun isAutomationEnabled(context: Context): Boolean = securePrefs(context).getBoolean(KEY_ENABLED, false)
     fun setAutomationEnabled(context: Context, enabled: Boolean) = securePrefs(context).edit().putBoolean(KEY_ENABLED, enabled).apply()
 
-    fun buildRecipients(parties: List<com.zerobook.app.data.Party>, bills: List<com.zerobook.app.data.BillReceivable>): List<RecipientUi> =
-        bills
+    fun buildRecipients(parties: List<com.zerobook.app.data.Party>, bills: List<com.zerobook.app.data.BillReceivable>): List<RecipientUi> {
+        val partiesById = parties.associateBy { it.id }
+        return bills
             .filter { it.outstandingAmount > 0.0 }
             .groupBy { it.partyId }
             .mapNotNull { (partyId, groupedBills) ->
-                val party = parties.find { it.id == partyId } ?: return@mapNotNull null
+                val party = partiesById[partyId] ?: return@mapNotNull null
                 if (party.email.isBlank()) return@mapNotNull null
                 val dueDateLabel = groupedBills.mapNotNull { it.dueDate }.minOrNull()?.let { millis ->
                     Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("dd-MMM-yyyy"))
@@ -102,6 +103,7 @@ Thank you.
                 )
             }
             .sortedBy { it.customerName.lowercase() }
+    }
 
     fun createSignInIntent(context: Context): Intent {
         val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
@@ -185,36 +187,40 @@ Thank you.
             setRequestProperty("Content-Type", "application/json")
             setRequestProperty("Accept", "application/json")
         }
-        connection.outputStream.use { it.write(payload.toByteArray(StandardCharsets.UTF_8)) }
-        val code = connection.responseCode
-        if (code in 200..299) {
-            val db = AppDatabase.getDatabase(context.applicationContext)
-            db.emailHistoryDao().insertHistory(
-                EmailHistory(
-                    id = UUID.randomUUID().toString(),
-                    recipient = recipient,
-                    subject = subject,
-                    timestamp = System.currentTimeMillis(),
-                    status = "SENT",
-                    attachment = rule.invoiceReference.ifBlank { null },
-                    details = "Delivered through Gmail API"
+        try {
+            connection.outputStream.use { it.write(payload.toByteArray(StandardCharsets.UTF_8)) }
+            val code = connection.responseCode
+            if (code in 200..299) {
+                val db = AppDatabase.getDatabase(context.applicationContext)
+                db.emailHistoryDao().insertHistory(
+                    EmailHistory(
+                        id = UUID.randomUUID().toString(),
+                        recipient = recipient,
+                        subject = subject,
+                        timestamp = System.currentTimeMillis(),
+                        status = "SENT",
+                        attachment = rule.invoiceReference.ifBlank { null },
+                        details = "Delivered through Gmail API"
+                    )
                 )
-            )
-            Result.success("Email sent")
-        } else {
-            val db = AppDatabase.getDatabase(context.applicationContext)
-            db.emailHistoryDao().insertHistory(
-                EmailHistory(
-                    id = UUID.randomUUID().toString(),
-                    recipient = recipient,
-                    subject = subject,
-                    timestamp = System.currentTimeMillis(),
-                    status = "FAILED",
-                    attachment = rule.invoiceReference.ifBlank { null },
-                    details = connection.errorStream?.bufferedReader()?.readText().orEmpty()
+                Result.success("Email sent")
+            } else {
+                val db = AppDatabase.getDatabase(context.applicationContext)
+                db.emailHistoryDao().insertHistory(
+                    EmailHistory(
+                        id = UUID.randomUUID().toString(),
+                        recipient = recipient,
+                        subject = subject,
+                        timestamp = System.currentTimeMillis(),
+                        status = "FAILED",
+                        attachment = rule.invoiceReference.ifBlank { null },
+                        details = connection.errorStream?.bufferedReader()?.use { it.readText() }.orEmpty()
+                    )
                 )
-            )
-            Result.failure(IllegalStateException("Gmail API request failed with $code"))
+                Result.failure(IllegalStateException("Gmail API request failed with $code"))
+            }
+        } finally {
+            connection.disconnect()
         }
     }
 
