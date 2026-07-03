@@ -127,6 +127,7 @@ private object Routes {
     const val PartyDetail = "party_detail/{partyId}"
 }
 
+@androidx.compose.runtime.Immutable
 private data class TopLevelDestination(
     val route: String,
     val label: String,
@@ -283,11 +284,14 @@ private fun AppContent(
         if (isSplash) {
             SplashScreen(onTimeout = { showSplash = false })
         } else {
-            val sharedPreferences = remember {
+            val sharedPreferences = remember(context) {
                 context.getSharedPreferences("zerobook_pref", Context.MODE_PRIVATE)
             }
             var pinRequired by remember {
                 mutableStateOf(sharedPreferences.getBoolean("pin_enabled", false))
+            }
+            val correctPin = remember(sharedPreferences) {
+                sharedPreferences.getString("lock_pin", "1234") ?: "1234"
             }
             var pinAuthed by remember { mutableStateOf(false) }
             var changelogData by remember { mutableStateOf<ChangelogData?>(null) }
@@ -339,7 +343,7 @@ private fun AppContent(
 
                 pinRequired && !pinAuthed -> {
                     PinLockScreen(
-                        correctPin = sharedPreferences.getString("lock_pin", "1234") ?: "1234",
+                        correctPin = correctPin,
                         onAuthentic = { pinAuthed = true }
                     )
                 }
@@ -348,8 +352,10 @@ private fun AppContent(
                     val navController = rememberNavController()
                     val navBackStackEntry by navController.currentBackStackEntryAsState()
                     val currentDestination = navBackStackEntry?.destination
-                    val isTopLevel = topLevelDestinations.any { destination ->
-                        currentDestination?.hierarchy?.any { it.route == destination.route } == true
+                    val isTopLevel = remember(currentDestination) {
+                        topLevelDestinations.any { destination ->
+                            currentDestination?.hierarchy?.any { it.route == destination.route } == true
+                        }
                     }
 
                     Scaffold(

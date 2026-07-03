@@ -68,6 +68,22 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
 
+@Immutable
+private data class DashboardVoucherSummary(
+    val todaySales: Double = 0.0,
+    val todayPurchases: Double = 0.0,
+    val thisMonthSales: Double = 0.0,
+    val netProfit: Double = 0.0,
+    val gstValue: Double = 0.0
+)
+
+@Immutable
+private data class DashboardSearchResults(
+    val vouchers: List<Voucher> = emptyList(),
+    val ledgerEntries: List<LedgerEntry> = emptyList(),
+    val products: List<com.zerobook.app.data.Product> = emptyList()
+)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DashboardScreen(
@@ -113,20 +129,47 @@ fun DashboardScreen(
     calendar.set(Calendar.DAY_OF_MONTH, 1)
     val firstDayOfMonth = calendar.timeInMillis
 
-    // Calculates KPIs
-    val todaySales by remember(vouchers, todayStart) {
+    val voucherSummary by remember(vouchers, todayStart, firstDayOfMonth) {
         derivedStateOf {
-            vouchers.filter { it.type == "SALE" && it.date >= todayStart }.sumOf { it.netAmount }
-        }
-    }
-    val todayPurchases by remember(vouchers, todayStart) {
-        derivedStateOf {
-            vouchers.filter { it.type == "PURCHASE" && it.date >= todayStart }.sumOf { it.netAmount }
-        }
-    }
-    val thisMonthSales by remember(vouchers, firstDayOfMonth) {
-        derivedStateOf {
-            vouchers.filter { it.type == "SALE" && it.date >= firstDayOfMonth }.sumOf { it.netAmount }
+            var todaySales = 0.0
+            var todayPurchases = 0.0
+            var thisMonthSales = 0.0
+            var monthlyTaxableSales = 0.0
+            var monthlyTaxablePurchases = 0.0
+            var gstValue = 0.0
+
+            vouchers.forEach { voucher ->
+                gstValue += voucher.cgst + voucher.sgst + voucher.igst
+
+                when (voucher.type) {
+                    "SALE" -> {
+                        if (voucher.date >= todayStart) {
+                            todaySales += voucher.netAmount
+                        }
+                        if (voucher.date >= firstDayOfMonth) {
+                            thisMonthSales += voucher.netAmount
+                            monthlyTaxableSales += voucher.taxableAmount
+                        }
+                    }
+
+                    "PURCHASE" -> {
+                        if (voucher.date >= todayStart) {
+                            todayPurchases += voucher.netAmount
+                        }
+                        if (voucher.date >= firstDayOfMonth) {
+                            monthlyTaxablePurchases += voucher.taxableAmount
+                        }
+                    }
+                }
+            }
+
+            DashboardVoucherSummary(
+                todaySales = todaySales,
+                todayPurchases = todayPurchases,
+                thisMonthSales = thisMonthSales,
+                netProfit = monthlyTaxableSales - monthlyTaxablePurchases,
+                gstValue = gstValue
+            )
         }
     }
 
@@ -166,13 +209,6 @@ fun DashboardScreen(
         }
     }
 
-    val netProfit by remember(vouchers, firstDayOfMonth) {
-        derivedStateOf {
-            val sales = vouchers.filter { it.type == "SALE" && it.date >= firstDayOfMonth }.sumOf { it.taxableAmount }
-            val purchase = vouchers.filter { it.type == "PURCHASE" && it.date >= firstDayOfMonth }.sumOf { it.taxableAmount }
-            sales - purchase // Gross margin approximation as profit
-        }
-    }
     val lowStockProducts by remember(products) {
         derivedStateOf {
             products.filter { it.enableStockAlert && it.currentStock <= it.lowStockThreshold }
@@ -220,12 +256,38 @@ fun DashboardScreen(
         derivedStateOf { visibleTransactions.take(8) }
     }
 
+    val searchResults by remember(searchQuery, vouchers, ledgerEntries, products) {
+        derivedStateOf {
+            if (searchQuery.isBlank()) {
+                DashboardSearchResults()
+            } else {
+                val q = searchQuery.lowercase()
+                DashboardSearchResults(
+                    vouchers = vouchers.filter {
+                        it.voucherNo.lowercase().contains(q) ||
+                            (it.partyId?.lowercase()?.contains(q) == true) ||
+                            it.type.lowercase().contains(q) ||
+                            Utils.formatDate(it.date).lowercase().contains(q)
+                    }.take(5),
+                    ledgerEntries = ledgerEntries.filter {
+                        it.id.lowercase().contains(q) ||
+                            it.accountHead.lowercase().contains(q) ||
+                            (it.narration?.lowercase()?.contains(q) == true) ||
+                            Utils.formatDate(it.date).lowercase().contains(q)
+                    }.take(5),
+                    products = products.filter {
+                        it.id.lowercase().contains(q) ||
+                            it.name.lowercase().contains(q) ||
+                            (it.hsnCode?.lowercase()?.contains(q) == true)
+                    }.take(5)
+                )
+            }
+        }
+    }
+
     val showGstCard by remember(profile) { derivedStateOf { profile?.gstin?.isNotBlank() == true } }
     val inventoryValue by remember(products) {
         derivedStateOf { products.sumOf { it.currentStock * it.saleRate } }
-    }
-    val gstValue by remember(vouchers) {
-        derivedStateOf { vouchers.sumOf { it.cgst + it.sgst + it.igst } }
     }
 
     BackHandler(enabled = searchQuery.isNotBlank()) {
@@ -346,27 +408,9 @@ fun DashboardScreen(
         )
 
         if (searchQuery.isNotBlank()) {
-            val q = searchQuery.lowercase()
-            
-            val foundVouchers = vouchers.filter { 
-                it.voucherNo.lowercase().contains(q) || 
-                (it.partyId?.lowercase()?.contains(q) == true) || 
-                it.type.lowercase().contains(q) || 
-                Utils.formatDate(it.date).lowercase().contains(q) 
-            }.take(5)
-            
-            val foundLedger = ledgerEntries.filter { 
-                it.id.lowercase().contains(q) || 
-                it.accountHead.lowercase().contains(q) || 
-                (it.narration?.lowercase()?.contains(q) == true) || 
-                Utils.formatDate(it.date).lowercase().contains(q) 
-            }.take(5)
-            
-            val foundProducts = products.filter {
-                it.id.lowercase().contains(q) ||
-                it.name.lowercase().contains(q) ||
-                (it.hsnCode?.lowercase()?.contains(q) == true)
-            }.take(5)
+            val foundVouchers = searchResults.vouchers
+            val foundLedger = searchResults.ledgerEntries
+            val foundProducts = searchResults.products
 
             if (foundVouchers.isEmpty() && foundLedger.isEmpty() && foundProducts.isEmpty()) {
                 Text("No results found.", fontSize = 12.sp, color = Color.Gray, modifier = Modifier.padding(vertical = 8.dp))
@@ -429,9 +473,9 @@ fun DashboardScreen(
         
         if (searchQuery.isBlank()) {
             if (showProgressTracker) {
-                val progressPercent by remember(netProfit, progressTarget) {
+                val progressPercent by remember(voucherSummary.netProfit, progressTarget) {
                     derivedStateOf {
-                        ((netProfit / progressTarget.coerceAtLeast(1.0)) * 100.0).coerceIn(0.0, 100.0)
+                        ((voucherSummary.netProfit / progressTarget.coerceAtLeast(1.0)) * 100.0).coerceIn(0.0, 100.0)
                     }
                 }
                 Card(
@@ -510,17 +554,17 @@ fun DashboardScreen(
 
             // Analytical Cards Grid Structure (2-columns wide)
             val cardList = buildList {
-                add(KpiDetails("Today's Sales", Utils.formatIndianCurrency(todaySales), "", Color(0xFF1A73E8)))
-                add(KpiDetails("Today's Purchases", Utils.formatIndianCurrency(todayPurchases), "", Color(0xFFBAC5D6)))
-                add(KpiDetails("This Month's Sales", Utils.formatIndianCurrency(thisMonthSales), "", Color(0xFF28A745)))
-                add(KpiDetails("Net Profit (Est.)", Utils.formatIndianCurrency(netProfit), "", if (netProfit >= 0) Color(0xFF28A745) else Color(0xFFDC3545)))
+                add(KpiDetails("Today's Sales", Utils.formatIndianCurrency(voucherSummary.todaySales), "", Color(0xFF1A73E8)))
+                add(KpiDetails("Today's Purchases", Utils.formatIndianCurrency(voucherSummary.todayPurchases), "", Color(0xFFBAC5D6)))
+                add(KpiDetails("This Month's Sales", Utils.formatIndianCurrency(voucherSummary.thisMonthSales), "", Color(0xFF28A745)))
+                add(KpiDetails("Net Profit (Est.)", Utils.formatIndianCurrency(voucherSummary.netProfit), "", if (voucherSummary.netProfit >= 0) Color(0xFF28A745) else Color(0xFFDC3545)))
                 add(KpiDetails("Receivables (Dr)", Utils.formatIndianCurrency(balanceSnapshot.outstandingReceivable), "", Color(0xFFDC3545)))
                 add(KpiDetails("Payables (Cr)", Utils.formatIndianCurrency(balanceSnapshot.outstandingPayable), "", Color(0xFF9C27B0)))
                 add(KpiDetails("Cash Account", Utils.formatIndianCurrency(balanceSnapshot.cashBalance), "", Color(0xFFFD7E14)))
                 add(KpiDetails("Bank & UPI", Utils.formatIndianCurrency(balanceSnapshot.bankBalance), "", Color(0xFF17A2B8)))
                 add(KpiDetails("Inventory", Utils.formatIndianCurrency(inventoryValue), "", Color(0xFF6F42C1)))
                 if (showGstCard) {
-                    add(KpiDetails("GST", Utils.formatIndianCurrency(gstValue), "", Color(0xFF0D9488)))
+                    add(KpiDetails("GST", Utils.formatIndianCurrency(voucherSummary.gstValue), "", Color(0xFF0D9488)))
                 }
             }
 
@@ -892,8 +936,8 @@ fun DashboardScreen(
                     Text("Metric: $progressMetric")
                     Text("Period: $progressPeriod")
                     Text("Target: ${Utils.formatIndianCurrency(progressTarget)}")
-                    Text("Current: ${Utils.formatIndianCurrency(netProfit)}")
-                    val percent = ((netProfit / progressTarget.coerceAtLeast(1.0)) * 100.0).coerceIn(0.0, 100.0)
+                    Text("Current: ${Utils.formatIndianCurrency(voucherSummary.netProfit)}")
+                    val percent = ((voucherSummary.netProfit / progressTarget.coerceAtLeast(1.0)) * 100.0).coerceIn(0.0, 100.0)
                     Text("Progress: ${String.format(Locale.US, "%.2f", percent)}%")
                 }
             }
