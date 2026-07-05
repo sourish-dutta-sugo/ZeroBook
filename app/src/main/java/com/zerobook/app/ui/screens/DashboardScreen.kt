@@ -334,24 +334,27 @@ fun DashboardScreen(
                 )
             }
             Column(
-                horizontalAlignment = Alignment.End,
+                horizontalAlignment = Alignment.Start,
                 verticalArrangement = Arrangement.spacedBy(2.dp)
             ) {
                 Text(
-                    text = "FY ${headerState.fyLabel}",
-                    fontSize = 11.sp,
-                    color = AppColors.primary,
-                    fontWeight = FontWeight.Medium
-                )
-                Text(
                     text = headerState.businessName.ifBlank { "Business Profile" },
-                    fontSize = 10.sp,
-                    color = AppColors.textSecondary,
+                    fontSize = 11.sp,
+                    color = AppColors.textPrimary,
+                    fontWeight = FontWeight.Bold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
-                    text = if (headerState.gstin.isBlank()) "Non-GST" else "GST: ${headerState.gstin}",
+                    text = if (headerState.gstin.isBlank()) "Non-GST" else headerState.gstin,
+                    fontSize = 10.sp,
+                    color = AppColors.textSecondary,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = "FY ${headerState.fyLabel}",
                     fontSize = 10.sp,
                     color = AppColors.textTertiary,
                     maxLines = 1,
