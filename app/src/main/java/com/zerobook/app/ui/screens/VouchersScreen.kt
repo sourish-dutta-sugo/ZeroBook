@@ -201,7 +201,7 @@ private const val SORT_VOUCHER_NUMBER = "VOUCHER_NUMBER"
 private const val SORT_PARTY_NAME_AZ = "PARTY_NAME_AZ"
 private const val SORT_PARTY_NAME_ZA = "PARTY_NAME_ZA"
 
-private data class VoucherFilterState(
+internal data class VoucherFilterState(
     val type: String? = null,
     val paymentStatus: String? = null,
     val partyName: String? = null,
@@ -295,7 +295,7 @@ private fun VoucherFilterState.removeFilter(key: String): VoucherFilterState = w
     else -> this
 }
 
-private fun applyVoucherFilters(
+internal fun applyVoucherFilters(
     vouchers: List<Voucher>,
     searchQuery: String,
     filterState: VoucherFilterState,
