@@ -2,6 +2,18 @@
   "show_once": true,
   "history": [
     {
+      "version": "2.2.3",
+      "changes": [
+        "ADDED: Income vouchers now work as a full voucher type, mirroring Expense workflows for posting and reporting.",
+        "ADDED: Debit Note and Credit Note entries now post to ledger accounts with dedicated handling.",
+        "IMPROVED: Party-related ledger entries now consistently populate partyId from the start.",
+        "FIXED: Financial-year lock checks now protect Expense and Income entries more reliably.",
+        "FIXED: Voucher reference handling now uses a dedicated column instead of fragile narration-based matching.",
+        "FIXED: Balance Sheet no longer force-balances itself, and the Trial Balance issue is corrected.",
+        "FIXED: Crashes when opening Journal, Credit Note, Debit Note, and Income are resolved."
+      ]
+    },
+    {
       "version": "1.0.0-rc1",
       "changes": [
         "PRE-RELEASE: Introduced a unified premium motion system for screen transitions, tap feedback, FABs, and key interactive surfaces ahead of v1.0.",
