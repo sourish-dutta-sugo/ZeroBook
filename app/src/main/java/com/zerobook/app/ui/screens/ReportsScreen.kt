@@ -1042,7 +1042,7 @@ fun TrialBalanceView(
                     .padding(10.dp)
             ) {
                 Text(
-                    text = "Difference in Opening / Capital values (Balanced on Capital):",
+                    text = "Unreconciled Difference (review required):",
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
                     color = AppColors.textPrimary,
@@ -1071,19 +1071,26 @@ fun TrialBalanceView(
             HorizontalDivider()
         }
 
-        // Grand Totals (CR = DR absolutely reconciles)
-        val finalDrSum = if (grandDr > grandCr) grandDr else grandCr
-        val finalCrSum = finalDrSum
+        // Grand Totals — show the REAL debit and credit totals, do not force them equal
+        val finalDrSum = grandDr
+        val finalCrSum = grandCr
+        val isBalanced = difference < 0.01
 
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(AppColors.primary)
+                .background(if (isBalanced) AppColors.primary else AppColors.error)
                 .padding(vertical = 12.dp, horizontal = 12.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("GRAND BALANCED TOTALS (Tally Engine)", fontWeight = FontWeight.ExtraBold, fontSize = 11.sp, color = AppColors.textOnPrimary, modifier = Modifier.weight(1.5f))
+            Text(
+                if (isBalanced) "GRAND TOTALS (BALANCED)" else "GRAND TOTALS (NOT BALANCED — REVIEW)",
+                fontWeight = FontWeight.ExtraBold,
+                fontSize = 11.sp,
+                color = AppColors.textOnPrimary,
+                modifier = Modifier.weight(1.5f)
+            )
             Text(String.format("₹ %,.2f", finalDrSum), fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Black, fontSize = 11.sp, color = AppColors.textOnPrimary, modifier = Modifier.weight(1f), textAlign = TextAlign.End)
             Text(String.format("₹ %,.2f", finalCrSum), fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Black, fontSize = 11.sp, color = AppColors.textOnPrimary, modifier = Modifier.weight(1f), textAlign = TextAlign.End)
         }
