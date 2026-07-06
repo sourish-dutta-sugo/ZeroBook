@@ -141,6 +141,22 @@ fun ensureProductExtensionColumns(db: SupportSQLiteDatabase) {
     db.execSQL("UPDATE products SET stock_unit = unit WHERE stock_unit IS NULL OR stock_unit = ''")
 }
 
+fun ensureBankCashSourceVoucherColumn(db: SupportSQLiteDatabase) {
+    val cursor = db.query("PRAGMA table_info(bank_cash_transactions)")
+    var hasColumn = false
+    cursor.use {
+        val nameIndex = it.getColumnIndex("name")
+        while (it.moveToNext()) {
+            if (it.getString(nameIndex) == "sourceVoucherId") {
+                hasColumn = true
+            }
+        }
+    }
+    if (!hasColumn) {
+        db.execSQL("ALTER TABLE bank_cash_transactions ADD COLUMN sourceVoucherId TEXT")
+    }
+}
+
 fun ensureReminderScheduleTable(db: SupportSQLiteDatabase) {
     db.execSQL(
         """
@@ -624,6 +640,7 @@ val MIGRATION_13_14 = object : Migration(13, 14) {
         ensureBusinessProfileExtensionColumns(db)
         ensurePartyExtensionColumns(db)
         ensureProductExtensionColumns(db)
+        ensureBankCashSourceVoucherColumn(db)
         ensureFinancialYearColumnsAndIndexes(db)
         ensureReminderScheduleTable(db)
         ensureExpenseTable(db)

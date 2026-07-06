@@ -202,7 +202,7 @@ interface BankCashDao {
     @Query("DELETE FROM bank_cash_transactions WHERE id = :id")
     suspend fun deleteTransaction(id: String)
 
-    @Query("DELETE FROM bank_cash_transactions WHERE narration LIKE '%' || :voucherId || '%'")
+    @Query("DELETE FROM bank_cash_transactions WHERE sourceVoucherId = :voucherId")
     suspend fun deleteTransactionsByVoucher(voucherId: String)
 }
 

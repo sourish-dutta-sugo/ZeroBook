@@ -439,6 +439,7 @@ fun AddTransactionForm(
                             date = System.currentTimeMillis(),
                             partyId = selectedParty?.id,
                             partyName = selectedParty?.name ?: "Generic Account Direct",
+                            sourceVoucherId = null,
                             narration = narration,
                             chequeNo = if (mode == "CHEQUE") chequeNo else null,
                             chequeDate = if (mode == "CHEQUE") System.currentTimeMillis() else null,

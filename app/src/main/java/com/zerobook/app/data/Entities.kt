@@ -241,6 +241,7 @@ data class BankCashTransaction(
     val date: Long,
     val partyId: String?,
     val partyName: String?,
+    val sourceVoucherId: String? = null,
     val narration: String,
     val chequeNo: String?,
     val chequeDate: Long?,
