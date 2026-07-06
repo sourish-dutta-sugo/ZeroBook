@@ -996,6 +996,82 @@ class AppRepository(private val db: AppDatabase) {
                     )
                 }
 
+                "DEBIT_NOTE" -> {
+                    // DR: Party or Cash/Bank
+                    val drHead = if (voucher.paymentMode == "CASH") "Cash" else if (voucher.paymentMode == "BANK" || voucher.paymentMode == "UPI") "Bank" else "Party: $partyDesc"
+                    ledgerList.add(
+                        LedgerEntry(
+                            id = UUID.randomUUID().toString(),
+                            accountHead = drHead,
+                            voucherId = voucher.id,
+                            date = voucher.date,
+                            debit = voucher.netAmount,
+                            credit = 0.0,
+                            narration = "Debit Note entry for ${voucher.voucherNo}",
+                            createdAt = System.currentTimeMillis()
+                        )
+                    )
+                    // CR: Debit Note Account
+                    ledgerList.add(
+                        LedgerEntry(
+                            id = UUID.randomUUID().toString(),
+                            accountHead = "Debit Note Account",
+                            voucherId = voucher.id,
+                            date = voucher.date,
+                            debit = 0.0,
+                            credit = voucher.taxableAmount,
+                            narration = "Debit Note credit",
+                            createdAt = System.currentTimeMillis()
+                        )
+                    )
+                    // CR: CGST / SGST / IGST Receivable
+                    if (voucher.isIgst) {
+                        if (voucher.igst > 0) {
+                            ledgerList.add(
+                                LedgerEntry(
+                                    id = UUID.randomUUID().toString(),
+                                    accountHead = "IGST Receivable",
+                                    voucherId = voucher.id,
+                                    date = voucher.date,
+                                    debit = 0.0,
+                                    credit = voucher.igst,
+                                    narration = "IGST Receivable reversal",
+                                    createdAt = System.currentTimeMillis()
+                                )
+                            )
+                        }
+                    } else {
+                        if (voucher.cgst > 0) {
+                            ledgerList.add(
+                                LedgerEntry(
+                                    id = UUID.randomUUID().toString(),
+                                    accountHead = "CGST Receivable",
+                                    voucherId = voucher.id,
+                                    date = voucher.date,
+                                    debit = 0.0,
+                                    credit = voucher.cgst,
+                                    narration = "CGST Receivable reversal",
+                                    createdAt = System.currentTimeMillis()
+                                )
+                            )
+                        }
+                        if (voucher.sgst > 0) {
+                            ledgerList.add(
+                                LedgerEntry(
+                                    id = UUID.randomUUID().toString(),
+                                    accountHead = "SGST Receivable",
+                                    voucherId = voucher.id,
+                                    date = voucher.date,
+                                    debit = 0.0,
+                                    credit = voucher.sgst,
+                                    narration = "SGST Receivable reversal",
+                                    createdAt = System.currentTimeMillis()
+                                )
+                            )
+                        }
+                    }
+                }
+
                 "BILLS_RECEIVABLE" -> {
                     ledgerList.add(
                         LedgerEntry(
