@@ -920,6 +920,82 @@ class AppRepository(private val db: AppDatabase) {
                     }
                 }
 
+                "CREDIT_NOTE" -> {
+                    // DR: Credit Note Account
+                    ledgerList.add(
+                        LedgerEntry(
+                            id = UUID.randomUUID().toString(),
+                            accountHead = "Credit Note Account",
+                            voucherId = voucher.id,
+                            date = voucher.date,
+                            debit = voucher.taxableAmount,
+                            credit = 0.0,
+                            narration = "Credit Note debit",
+                            createdAt = System.currentTimeMillis()
+                        )
+                    )
+                    // DR: CGST / SGST / IGST Payable
+                    if (voucher.isIgst) {
+                        if (voucher.igst > 0) {
+                            ledgerList.add(
+                                LedgerEntry(
+                                    id = UUID.randomUUID().toString(),
+                                    accountHead = "IGST Payable",
+                                    voucherId = voucher.id,
+                                    date = voucher.date,
+                                    debit = voucher.igst,
+                                    credit = 0.0,
+                                    narration = "IGST reversal",
+                                    createdAt = System.currentTimeMillis()
+                                )
+                            )
+                        }
+                    } else {
+                        if (voucher.cgst > 0) {
+                            ledgerList.add(
+                                LedgerEntry(
+                                    id = UUID.randomUUID().toString(),
+                                    accountHead = "CGST Payable",
+                                    voucherId = voucher.id,
+                                    date = voucher.date,
+                                    debit = voucher.cgst,
+                                    credit = 0.0,
+                                    narration = "CGST reversal",
+                                    createdAt = System.currentTimeMillis()
+                                )
+                            )
+                        }
+                        if (voucher.sgst > 0) {
+                            ledgerList.add(
+                                LedgerEntry(
+                                    id = UUID.randomUUID().toString(),
+                                    accountHead = "SGST Payable",
+                                    voucherId = voucher.id,
+                                    date = voucher.date,
+                                    debit = voucher.sgst,
+                                    credit = 0.0,
+                                    narration = "SGST reversal",
+                                    createdAt = System.currentTimeMillis()
+                                )
+                            )
+                        }
+                    }
+                    // CR: Party / Cash / Bank
+                    val crHead = if (voucher.paymentMode == "CASH") "Cash" else if (voucher.paymentMode == "BANK" || voucher.paymentMode == "UPI") "Bank" else "Party: $partyDesc"
+                    ledgerList.add(
+                        LedgerEntry(
+                            id = UUID.randomUUID().toString(),
+                            accountHead = crHead,
+                            voucherId = voucher.id,
+                            date = voucher.date,
+                            debit = 0.0,
+                            credit = voucher.netAmount,
+                            narration = "Credit Note entry for voucher ${voucher.voucherNo}",
+                            createdAt = System.currentTimeMillis()
+                        )
+                    )
+                }
+
                 "BILLS_RECEIVABLE" -> {
                     ledgerList.add(
                         LedgerEntry(
