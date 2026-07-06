@@ -1372,6 +1372,7 @@ fun BalanceSheetView(
     totalAssets: Double
 ) {
     val scroll = rememberScrollState()
+    val totalLiabilities = balancingCapital + totalCreditors + (if (liabilitiesDuties > 0) liabilitiesDuties else 0.0)
 
     Column(
         modifier = Modifier
@@ -1417,7 +1418,7 @@ fun BalanceSheetView(
                 }
 
                 HorizontalDivider()
-                PLTotalItem(totalAssets)
+                PLTotalItem(totalLiabilities)
             }
 
             // Right Column: Assets
@@ -1449,6 +1450,35 @@ fun BalanceSheetView(
 
                 HorizontalDivider()
                 PLTotalItem(totalAssets)
+            }
+        }
+
+        val bsDifference = kotlin.math.abs(totalLiabilities - totalAssets)
+        if (bsDifference >= 1.0) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(Colors.warning.copy(alpha = 0.12f))
+                    .padding(10.dp),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = "Balance Sheet does not tie out — review required:",
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = AppColors.textPrimary,
+                    modifier = Modifier.weight(1.5f),
+                    maxLines = 2
+                )
+                Text(
+                    text = String.format("₹ %,.2f", bsDifference),
+                    fontFamily = FontFamily.Monospace,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = AppColors.error,
+                    modifier = Modifier.weight(1f),
+                    textAlign = TextAlign.End
+                )
             }
         }
     }
