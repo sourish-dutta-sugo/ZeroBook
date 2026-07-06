@@ -363,6 +363,8 @@ class AppRepository(private val db: AppDatabase) {
     suspend fun insertExpense(expense: Expense) {
         ensureFinancialYearExists(expense.fyLabel)
         db.withTransaction {
+            val yearState = db.financialYearDao().getFinancialYearByCode(expense.fyLabel)
+            require(yearState?.isLocked != true) { "Financial year ${expense.fyLabel} is locked." }
             db.expenseDao().insertExpense(expense)
             db.ledgerDao().insertLedgerEntries(
                 listOf(
@@ -420,6 +422,8 @@ class AppRepository(private val db: AppDatabase) {
     suspend fun insertIncome(income: Income) {
         ensureFinancialYearExists(income.fyLabel)
         db.withTransaction {
+            val yearState = db.financialYearDao().getFinancialYearByCode(income.fyLabel)
+            require(yearState?.isLocked != true) { "Financial year ${income.fyLabel} is locked." }
             db.incomeDao().insertIncome(income)
             db.ledgerDao().insertLedgerEntries(
                 listOf(
