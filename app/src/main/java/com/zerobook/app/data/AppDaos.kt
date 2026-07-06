@@ -175,6 +175,12 @@ interface LedgerDao {
     @Query("SELECT * FROM ledger_entries WHERE voucherId = :voucherId")
     suspend fun getLedgerEntriesByVoucherId(voucherId: String): List<LedgerEntry>
 
+    @Query("SELECT * FROM ledger_entries WHERE partyId IS NULL AND accountHead LIKE 'Party: %'")
+    suspend fun getEntriesWithNullPartyIdAndPartyPrefix(): List<LedgerEntry>
+
+    @Query("UPDATE ledger_entries SET partyId = :partyId WHERE id = :entryId")
+    suspend fun updatePartyId(entryId: String, partyId: String)
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertLedgerEntries(entries: List<LedgerEntry>)
 

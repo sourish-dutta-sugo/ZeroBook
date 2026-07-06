@@ -157,6 +157,22 @@ fun ensureBankCashSourceVoucherColumn(db: SupportSQLiteDatabase) {
     }
 }
 
+fun ensureLedgerEntryPartyIdColumn(db: SupportSQLiteDatabase) {
+    val cursor = db.query("PRAGMA table_info(ledger_entries)")
+    var hasColumn = false
+    cursor.use {
+        val nameIndex = it.getColumnIndex("name")
+        while (it.moveToNext()) {
+            if (it.getString(nameIndex) == "partyId") {
+                hasColumn = true
+            }
+        }
+    }
+    if (!hasColumn) {
+        db.execSQL("ALTER TABLE ledger_entries ADD COLUMN partyId TEXT")
+    }
+}
+
 fun ensureReminderScheduleTable(db: SupportSQLiteDatabase) {
     db.execSQL(
         """

@@ -201,6 +201,41 @@ class AppRepository(private val db: AppDatabase) {
     }
     suspend fun deleteLedgerAccount(id: String) = db.ledgerAccountDao().deleteLedgerAccount(id)
 
+    suspend fun backfillLedgerEntryPartyIds() {
+        val allParties = db.partyDao().getAllPartiesSync()
+        val nameToId = allParties.groupBy { it.name }
+        val unmatchedEntries = db.ledgerDao().getEntriesWithNullPartyIdAndPartyPrefix()
+        var updatedCount = 0
+        var ambiguousCount = 0
+        var unmatchedCount = 0
+        val ambiguousNames = linkedSetOf<String>()
+        for (entry in unmatchedEntries) {
+            val partyName = entry.accountHead.removePrefix("Party: ")
+            val matches = nameToId[partyName]
+            when {
+                matches == null || matches.isEmpty() -> unmatchedCount++
+                matches.size == 1 -> {
+                    db.ledgerDao().updatePartyId(entry.id, matches.first().id)
+                    updatedCount++
+                }
+                else -> {
+                    ambiguousCount++
+                    ambiguousNames.add(partyName)
+                }
+            }
+        }
+        android.util.Log.i(
+            "ZeroBookMigration",
+            "Ledger partyId backfill: $updatedCount matched, $ambiguousCount ambiguous (duplicate names), $unmatchedCount unmatched (party not found, likely deleted/renamed with no trace)."
+        )
+        if (ambiguousNames.isNotEmpty()) {
+            android.util.Log.w(
+                "ZeroBookMigration",
+                "Ledger partyId backfill ambiguous party names: ${ambiguousNames.sorted().joinToString() }"
+            )
+        }
+    }
+
     suspend fun seedLedgersIfEmpty() {
         db.withTransaction {
             val existing = db.ledgerAccountDao().getAllLedgerAccountsSync()
@@ -579,6 +614,7 @@ class AppRepository(private val db: AppDatabase) {
                                 LedgerEntry(
                                     id = UUID.randomUUID().toString(),
                                     accountHead = "Party: $partyDesc",
+                                    partyId = voucher.partyId,
                                     voucherId = voucher.id,
                                     date = voucher.date,
                                     debit = extras.remainingCreditAmount,
@@ -590,10 +626,12 @@ class AppRepository(private val db: AppDatabase) {
                         }
                     } else {
                         val drHead = if (voucher.paymentMode == "CASH") "Cash" else if (voucher.paymentMode == "BANK" || voucher.paymentMode == "UPI") "Bank" else "Party: $partyDesc"
+                        val drPartyId = if (drHead.startsWith("Party: ")) voucher.partyId else null
                         ledgerList.add(
                             LedgerEntry(
                                 id = UUID.randomUUID().toString(),
                                 accountHead = drHead,
+                                partyId = drPartyId,
                                 voucherId = voucher.id,
                                 date = voucher.date,
                                 debit = voucher.netAmount,
@@ -760,6 +798,7 @@ class AppRepository(private val db: AppDatabase) {
                         LedgerEntry(
                             id = UUID.randomUUID().toString(),
                             accountHead = crHead,
+                            partyId = voucher.partyId,
                             voucherId = voucher.id,
                             date = voucher.date,
                             debit = 0.0,
@@ -777,6 +816,7 @@ class AppRepository(private val db: AppDatabase) {
                         LedgerEntry(
                             id = UUID.randomUUID().toString(),
                             accountHead = drHead,
+                            partyId = voucher.partyId.takeIf { drHead.startsWith("Party: ") },
                             voucherId = voucher.id,
                             date = voucher.date,
                             debit = voucher.netAmount,
@@ -790,6 +830,7 @@ class AppRepository(private val db: AppDatabase) {
                         LedgerEntry(
                             id = UUID.randomUUID().toString(),
                             accountHead = "Party: $partyDesc",
+                            partyId = voucher.partyId,
                             voucherId = voucher.id,
                             date = voucher.date,
                             debit = 0.0,
@@ -806,6 +847,7 @@ class AppRepository(private val db: AppDatabase) {
                         LedgerEntry(
                             id = UUID.randomUUID().toString(),
                             accountHead = "Party: $partyDesc",
+                            partyId = voucher.partyId,
                             voucherId = voucher.id,
                             date = voucher.date,
                             debit = voucher.netAmount,
@@ -893,10 +935,12 @@ class AppRepository(private val db: AppDatabase) {
                     }
                     // CR: Party / Cash / Bank
                     val crHead = if (voucher.paymentMode == "CASH") "Cash" else if (voucher.paymentMode == "BANK" || voucher.paymentMode == "UPI") "Bank" else "Party: $partyDesc"
+                    val crPartyId = if (crHead.startsWith("Party: ")) voucher.partyId else null
                     ledgerList.add(
                         LedgerEntry(
                             id = UUID.randomUUID().toString(),
                             accountHead = crHead,
+                            partyId = crPartyId,
                             voucherId = voucher.id,
                             date = voucher.date,
                             debit = 0.0,
@@ -911,10 +955,12 @@ class AppRepository(private val db: AppDatabase) {
                     // Reverse of PURCHASE
                     // DR: Party or Cash/Bank
                     val drHead = if (voucher.paymentMode == "CASH") "Cash" else if (voucher.paymentMode == "BANK" || voucher.paymentMode == "UPI") "Bank" else "Party: $partyDesc"
+                    val drPartyId = if (drHead.startsWith("Party: ")) voucher.partyId else null
                     ledgerList.add(
                         LedgerEntry(
                             id = UUID.randomUUID().toString(),
                             accountHead = drHead,
+                            partyId = drPartyId,
                             voucherId = voucher.id,
                             date = voucher.date,
                             debit = voucher.netAmount,
@@ -1046,10 +1092,12 @@ class AppRepository(private val db: AppDatabase) {
                     }
                     // CR: Party / Cash / Bank
                     val crHead = if (voucher.paymentMode == "CASH") "Cash" else if (voucher.paymentMode == "BANK" || voucher.paymentMode == "UPI") "Bank" else "Party: $partyDesc"
+                    val crPartyId = if (crHead.startsWith("Party: ")) voucher.partyId else null
                     ledgerList.add(
                         LedgerEntry(
                             id = UUID.randomUUID().toString(),
                             accountHead = crHead,
+                            partyId = crPartyId,
                             voucherId = voucher.id,
                             date = voucher.date,
                             debit = 0.0,
@@ -1063,10 +1111,12 @@ class AppRepository(private val db: AppDatabase) {
                 "DEBIT_NOTE" -> {
                     // DR: Party or Cash/Bank
                     val drHead = if (voucher.paymentMode == "CASH") "Cash" else if (voucher.paymentMode == "BANK" || voucher.paymentMode == "UPI") "Bank" else "Party: $partyDesc"
+                    val drPartyId = if (drHead.startsWith("Party: ")) voucher.partyId else null
                     ledgerList.add(
                         LedgerEntry(
                             id = UUID.randomUUID().toString(),
                             accountHead = drHead,
+                            partyId = drPartyId,
                             voucherId = voucher.id,
                             date = voucher.date,
                             debit = voucher.netAmount,
@@ -1153,6 +1203,7 @@ class AppRepository(private val db: AppDatabase) {
                         LedgerEntry(
                             id = UUID.randomUUID().toString(),
                             accountHead = "Party: $partyDesc",
+                            partyId = voucher.partyId,
                             voucherId = voucher.id,
                             date = voucher.date,
                             debit = 0.0,
@@ -1168,6 +1219,7 @@ class AppRepository(private val db: AppDatabase) {
                         LedgerEntry(
                             id = UUID.randomUUID().toString(),
                             accountHead = "Party: $partyDesc",
+                            partyId = voucher.partyId,
                             voucherId = voucher.id,
                             date = voucher.date,
                             debit = voucher.netAmount,
@@ -1523,10 +1575,13 @@ class AppRepository(private val db: AppDatabase) {
                 if (resolvedTransaction.mode == "CASH") "Cash" else "Bank"
             }
 
+            val drPartyId = if (drHead.startsWith("Party: ")) resolvedTransaction.partyId else null
+            val crPartyId = if (crHead.startsWith("Party: ")) resolvedTransaction.partyId else null
             val ledgerEntries = listOf(
                 LedgerEntry(
                     id = UUID.randomUUID().toString(),
                     accountHead = drHead,
+                    partyId = drPartyId,
                     voucherId = resolvedTransaction.id,
                     date = resolvedTransaction.date,
                     debit = resolvedTransaction.amount,
@@ -1538,6 +1593,7 @@ class AppRepository(private val db: AppDatabase) {
                 LedgerEntry(
                     id = UUID.randomUUID().toString(),
                     accountHead = crHead,
+                    partyId = crPartyId,
                     voucherId = resolvedTransaction.id,
                     date = resolvedTransaction.date,
                     debit = 0.0,

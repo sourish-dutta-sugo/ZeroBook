@@ -223,14 +223,38 @@ data class JournalLine(
 data class LedgerEntry(
     @PrimaryKey val id: String, // UUID
     val accountHead: String, // e.g. "Sales Account", "Party Name", "CGST Payable", "Round Off Account", "Cash", "Bank"
-    val voucherId: String,
-    val date: Long,
-    val debit: Double,
-    val credit: Double,
-    val narration: String,
+    val partyId: String? = null, // NEW: FK reference to Party.id, populated when this entry represents a party's account. Null for non-party ledger heads (Sales, GST, Cash, Bank, etc).
+    val voucherId: String = "",
+    val date: Long = 0L,
+    val debit: Double = 0.0,
+    val credit: Double = 0.0,
+    val narration: String = "",
     val financialYearCode: String = FinancialYearUtils.currentFinancialYearCode(),
     val createdAt: Long = System.currentTimeMillis()
-)
+) {
+    constructor(
+        id: String,
+        accountHead: String,
+        voucherId: String,
+        date: Long,
+        debit: Double,
+        credit: Double,
+        narration: String,
+        financialYearCode: String = FinancialYearUtils.currentFinancialYearCode(),
+        createdAt: Long = System.currentTimeMillis()
+    ) : this(
+        id = id,
+        accountHead = accountHead,
+        partyId = null,
+        voucherId = voucherId,
+        date = date,
+        debit = debit,
+        credit = credit,
+        narration = narration,
+        financialYearCode = financialYearCode,
+        createdAt = createdAt
+    )
+}
 
 @Entity(tableName = "bank_cash_transactions")
 data class BankCashTransaction(

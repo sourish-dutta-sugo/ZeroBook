@@ -166,6 +166,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         if (dbInitState.value is DbInitState.Success) {
             viewModelScope.launch {
                 repository.seedLedgersIfEmpty()
+                repository.backfillLedgerEntryPartyIds()
                 repository.ensureFinancialYearExists(financialYear.value)
             }
 
