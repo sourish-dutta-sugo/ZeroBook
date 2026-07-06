@@ -102,6 +102,9 @@ class AppRepository(private val db: AppDatabase) {
     fun observeExpenses(financialYearCode: String): Flow<List<Expense>> =
         db.expenseDao().getExpenses(financialYearCode)
 
+    fun observeIncomes(financialYearCode: String): Flow<List<Income>> =
+        db.incomeDao().getIncomes(financialYearCode)
+
     fun observeAvailableFinancialYearCodes(): Flow<List<String>> =
         financialYears.map { storedYears ->
             (storedYears.map { it.code } + FinancialYearUtils.buildGeneratedYears()).distinct().sortedDescending()
@@ -409,6 +412,63 @@ class AppRepository(private val db: AppDatabase) {
     suspend fun deleteExpense(id: String) {
         db.withTransaction {
             db.expenseDao().deleteExpense(id)
+            db.ledgerDao().deleteLedgerEntriesForVoucher(id)
+            db.bankCashDao().deleteTransactionsByVoucher(id)
+        }
+    }
+
+    suspend fun insertIncome(income: Income) {
+        ensureFinancialYearExists(income.fyLabel)
+        db.withTransaction {
+            db.incomeDao().insertIncome(income)
+            db.ledgerDao().insertLedgerEntries(
+                listOf(
+                    LedgerEntry(
+                        id = UUID.randomUUID().toString(),
+                        accountHead = if (income.paymentMode == "CASH") "Cash" else "Bank",
+                        voucherId = income.id,
+                        date = income.date,
+                        debit = income.amount,
+                        credit = 0.0,
+                        narration = income.description.ifBlank { "Income receipt" },
+                        financialYearCode = income.fyLabel
+                    ),
+                    LedgerEntry(
+                        id = UUID.randomUUID().toString(),
+                        accountHead = "${income.category} Income Account",
+                        voucherId = income.id,
+                        date = income.date,
+                        debit = 0.0,
+                        credit = income.amount,
+                        narration = income.description.ifBlank { "Income entry" },
+                        financialYearCode = income.fyLabel
+                    )
+                )
+            )
+            db.bankCashDao().insertTransaction(
+                BankCashTransaction(
+                    id = UUID.randomUUID().toString(),
+                    type = "RECEIPT",
+                    mode = income.paymentMode,
+                    amount = income.amount,
+                    date = income.date,
+                    partyId = null,
+                    partyName = null,
+                    sourceVoucherId = income.id,
+                    narration = "Income ${income.category}: ${income.description} [${income.id}]",
+                    chequeNo = null,
+                    chequeDate = null,
+                    bankName = null,
+                    receiptImagePath = income.attachmentPath.ifBlank { null },
+                    financialYearCode = income.fyLabel
+                )
+            )
+        }
+    }
+
+    suspend fun deleteIncome(id: String) {
+        db.withTransaction {
+            db.incomeDao().deleteIncome(id)
             db.ledgerDao().deleteLedgerEntriesForVoucher(id)
             db.bankCashDao().deleteTransactionsByVoucher(id)
         }

@@ -23,6 +23,7 @@ import com.zerobook.app.data.Voucher
 import com.zerobook.app.data.VoucherItem
 import com.zerobook.app.data.VoucherSaveExtras
 import com.zerobook.app.data.EmailReminderScheduler
+import com.zerobook.app.data.Income
 import com.zerobook.app.services.ExportStorageManager
 import com.zerobook.app.services.ExportTarget
 import com.zerobook.app.services.InvoiceGenerator
@@ -70,6 +71,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     val ledgerAccounts: StateFlow<List<LedgerAccount>>
     val billsReceivable: StateFlow<List<BillReceivable>>
     val expenses: StateFlow<List<Expense>>
+    val incomes: StateFlow<List<Income>>
 
     val isSetupCompleted = MutableStateFlow(false)
     val setupStatusResolved = MutableStateFlow(false)
@@ -150,6 +152,12 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         )
 
         expenses = financialYear.flatMapLatest(repository::observeExpenses).stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = emptyList()
+        )
+
+        incomes = financialYear.flatMapLatest(repository::observeIncomes).stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5_000),
             initialValue = emptyList()
@@ -273,6 +281,19 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     fun deleteExpense(expenseId: String) {
         viewModelScope.launch {
             repository.deleteExpense(expenseId)
+        }
+    }
+
+    fun saveIncome(income: Income, onSuccess: () -> Unit) {
+        viewModelScope.launch {
+            repository.insertIncome(income.copy(fyLabel = financialYear.value))
+            onSuccess()
+        }
+    }
+
+    fun deleteIncome(incomeId: String) {
+        viewModelScope.launch {
+            repository.deleteIncome(incomeId)
         }
     }
 

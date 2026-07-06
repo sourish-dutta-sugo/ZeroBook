@@ -2065,13 +2065,9 @@ fun NewVoucherScreen(
                                 .fillMaxWidth()
                                 .height(110.dp)
                                 .clickable {
-                                    if (type.key == "INCOME") {
-                                        // intentionally no navigation; visual tap feedback only
-                                    } else {
-                                        selectedType = type.key
-                                        formStep = 1
-                                        step = 2
-                                    }
+                                    selectedType = type.key
+                                    formStep = 1
+                                    step = 2
                                 }
                                 .shadow(4.dp, RoundedCornerShape(16.dp))
                                 .border(1.dp, type.accent.copy(alpha = 0.22f), RoundedCornerShape(16.dp)),
@@ -2107,6 +2103,10 @@ fun NewVoucherScreen(
         // Step 2: Main Entry layout
         if (selectedType == "EXPENSE") {
             ExpensesScreen(viewModel = viewModel, onNavigateBack = { step = 1 })
+            return
+        }
+        if (selectedType == "INCOME") {
+            IncomeScreen(viewModel = viewModel, onNavigateBack = { step = 1 })
             return
         }
         if (selectedType == "BILLS_RECEIVABLE") {

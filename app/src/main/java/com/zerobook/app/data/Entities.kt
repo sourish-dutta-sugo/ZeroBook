@@ -361,6 +361,21 @@ data class Expense(
     val createdAt: Long = System.currentTimeMillis()
 )
 
+@Entity(tableName = "incomes")
+data class Income(
+    @PrimaryKey val id: String,
+    val date: Long,
+    val category: String,
+    val description: String = "",
+    val amount: Double,
+    val paymentMode: String = "CASH",
+    val referenceNo: String = "",
+    val attachmentPath: String = "",
+    val voucherNo: String = "",
+    val fyLabel: String = FinancialYearUtils.currentFinancialYearCode(),
+    val createdAt: Long = System.currentTimeMillis()
+)
+
 @Entity(tableName = "email_accounts")
 data class EmailAccount(
     @PrimaryKey val accountId: String,

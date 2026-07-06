@@ -24,6 +24,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         BillReceivable::class,
         FinancialYearAuditLog::class,
         Expense::class,
+        Income::class,
         EmailAccount::class,
         EmailAutomationRule::class,
         EmailHistory::class
@@ -48,6 +49,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun billReceivableDao(): BillReceivableDao
     abstract fun financialYearAuditLogDao(): FinancialYearAuditLogDao
     abstract fun expenseDao(): ExpenseDao
+    abstract fun incomeDao(): IncomeDao
     abstract fun emailAccountDao(): EmailAccountDao
     abstract fun emailAutomationRuleDao(): EmailAutomationRuleDao
     abstract fun emailHistoryDao(): EmailHistoryDao

@@ -328,6 +328,21 @@ interface ExpenseDao {
 }
 
 @Dao
+interface IncomeDao {
+    @Query("SELECT * FROM incomes WHERE fyLabel = :financialYearCode ORDER BY date DESC, createdAt DESC")
+    fun getIncomes(financialYearCode: String): Flow<List<Income>>
+
+    @Query("SELECT * FROM incomes WHERE fyLabel = :financialYearCode ORDER BY date DESC, createdAt DESC")
+    suspend fun getIncomesSync(financialYearCode: String): List<Income>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertIncome(income: Income)
+
+    @Query("DELETE FROM incomes WHERE id = :id")
+    suspend fun deleteIncome(id: String)
+}
+
+@Dao
 interface EmailAccountDao {
     @Query("SELECT * FROM email_accounts ORDER BY createdAt DESC LIMIT 1")
     suspend fun getPrimaryAccountSync(): EmailAccount?

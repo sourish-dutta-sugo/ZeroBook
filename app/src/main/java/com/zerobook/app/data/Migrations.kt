@@ -196,6 +196,26 @@ fun ensureExpenseTable(db: SupportSQLiteDatabase) {
     )
 }
 
+fun ensureIncomeTable(db: SupportSQLiteDatabase) {
+    db.execSQL(
+        """
+        CREATE TABLE IF NOT EXISTS incomes (
+            id TEXT NOT NULL PRIMARY KEY,
+            date INTEGER NOT NULL,
+            category TEXT NOT NULL,
+            description TEXT NOT NULL DEFAULT '',
+            amount REAL NOT NULL,
+            paymentMode TEXT NOT NULL DEFAULT 'CASH',
+            referenceNo TEXT NOT NULL DEFAULT '',
+            attachmentPath TEXT NOT NULL DEFAULT '',
+            voucherNo TEXT NOT NULL DEFAULT '',
+            fyLabel TEXT NOT NULL DEFAULT '',
+            createdAt INTEGER NOT NULL DEFAULT 0
+        )
+        """.trimIndent()
+    )
+}
+
 fun ensureEmailAutomationTables(db: SupportSQLiteDatabase) {
     db.execSQL(
         """
@@ -619,6 +639,7 @@ val MIGRATION_11_12 = object : Migration(11, 12) {
         ensureFinancialYearColumnsAndIndexes(db)
         ensureReminderScheduleTable(db)
         ensureExpenseTable(db)
+        ensureIncomeTable(db)
     }
 }
 
@@ -631,6 +652,7 @@ val MIGRATION_12_13 = object : Migration(12, 13) {
         ensureFinancialYearColumnsAndIndexes(db)
         ensureReminderScheduleTable(db)
         ensureExpenseTable(db)
+        ensureIncomeTable(db)
     }
 }
 
@@ -644,6 +666,7 @@ val MIGRATION_13_14 = object : Migration(13, 14) {
         ensureFinancialYearColumnsAndIndexes(db)
         ensureReminderScheduleTable(db)
         ensureExpenseTable(db)
+        ensureIncomeTable(db)
         ensureEmailAutomationTables(db)
     }
 }
