@@ -459,16 +459,19 @@ object InvoiceGenerator {
     private suspend fun validateInvoiceDocument(document: InvoiceDocument) {
         check(document.invoiceNumber.isNotBlank()) { "Invoice number is missing." }
         check(document.business.businessName.isNotBlank()) { "Business name is missing." }
-        check(document.items.isNotEmpty() || document.voucher.type in setOf("RECEIPT", "PAYMENT")) { "Invoice line items are missing." }
-        val computedTaxable = document.items.sumOf { it.taxableAmount } + document.additionalCharges.sumOf { if (it.isTaxable) it.amount else 0.0 }
-        check(abs(computedTaxable - document.voucher.taxableAmount) < 1.0) { "Taxable amount validation failed." }
-        val computedNet = document.voucher.taxableAmount +
-            document.voucher.cgst +
-            document.voucher.sgst +
-            document.voucher.igst +
-            document.additionalCharges.sumOf { it.amount } +
-            document.voucher.roundOff
-        check(abs(computedNet - document.voucher.netAmount) < 1.0) { "Net amount validation failed." }
+        val itemlessAllowedTypes = setOf("RECEIPT", "PAYMENT", "JOURNAL", "CREDIT_NOTE", "DEBIT_NOTE", "INCOME")
+        check(document.items.isNotEmpty() || document.voucher.type in itemlessAllowedTypes) { "Invoice line items are missing." }
+        if (document.items.isNotEmpty()) {
+            val computedTaxable = document.items.sumOf { it.taxableAmount } + document.additionalCharges.sumOf { if (it.isTaxable) it.amount else 0.0 }
+            check(abs(computedTaxable - document.voucher.taxableAmount) < 1.0) { "Taxable amount validation failed." }
+            val computedNet = document.voucher.taxableAmount +
+                document.voucher.cgst +
+                document.voucher.sgst +
+                document.voucher.igst +
+                document.additionalCharges.sumOf { it.amount } +
+                document.voucher.roundOff
+            check(abs(computedNet - document.voucher.netAmount) < 1.0) { "Net amount validation failed." }
+        }
         document.business.logoPath?.takeIf { it.isNotBlank() }?.let {
             check(File(it).exists()) { "Business logo file not found." }
         }
