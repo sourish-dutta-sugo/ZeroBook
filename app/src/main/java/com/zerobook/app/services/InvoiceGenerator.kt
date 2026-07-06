@@ -429,6 +429,8 @@ object InvoiceGenerator {
             source.voucher.type == "DELIVERY_CHALLAN" -> "DELIVERY CHALLAN"
             source.voucher.type == "SALE_RETURN" -> "SALES RETURN"
             source.voucher.type == "PURCHASE_RETURN" -> "PURCHASE RETURN"
+            source.voucher.type == "CREDIT_NOTE" -> "CREDIT NOTE"
+            source.voucher.type == "DEBIT_NOTE" -> "DEBIT NOTE"
             source.voucher.type == "PAYMENT" && source.extras.isAdvance -> "ADVANCE PAYMENT"
             else -> if (source.profile.gstin.isNotBlank()) "TAX INVOICE" else "INVOICE"
         }
