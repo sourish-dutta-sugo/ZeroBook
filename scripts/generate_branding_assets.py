@@ -1,32 +1,35 @@
-"""Generate branding assets for the final logo migration."""
+"""Generate in-app and launcher branding assets from the approved source files."""
 from __future__ import annotations
 
-import os
 from pathlib import Path
 
 from PIL import Image
 
 REPO = Path(__file__).resolve().parents[1]
-ASSETS = Path(
-    r"C:\Users\SOURISH DUTTA\.cursor\projects"
-    r"\c-Users-SOURISH-DUTTA-AndroidStudioProjects-ZeroBook-Only-Android\assets"
-)
 DRAWABLE = REPO / "app" / "src" / "main" / "res" / "drawable"
 RES = REPO / "app" / "src" / "main" / "res"
+STORES = REPO / "stores"
 
-TRANSPARENT_SRC = next(
-    p for p in ASSETS.iterdir() if p.name.endswith("770f2822-88a8-4fae-b0d9-48805371c081.png")
-)
-LAUNCHER_SRC = next(
-    p for p in ASSETS.iterdir() if p.name.endswith("82ae6670-1d96-42b3-b6ee-0e19f1a4d6ea.png")
-)
+TRANSPARENT_SRC = Path(r"C:\Users\SOURISH DUTTA\Downloads\2nd logo.png")
+LAUNCHER_SRC = Path(r"C:\Users\SOURISH DUTTA\Downloads\3rd logo.jpg")
 
 CREAM = (250, 248, 245, 255)
+TRANSPARENT_CANVAS = 512
+TRANSPARENT_CONTENT_RATIO = 0.86
+ICON_CANVAS = 512
+ICON_IMAGE_RATIO = 0.82
 
 
 def is_filled(pixel: tuple[int, int, int, int]) -> bool:
     r, g, b, a = pixel
     return a > 128 and (r + g + b) < 384
+
+
+def crop_visible_rgba(image: Image.Image) -> Image.Image:
+    bbox = image.getbbox()
+    if not bbox:
+        raise RuntimeError("Image has no visible pixels.")
+    return image.crop(bbox)
 
 
 def generate_vector_drawable(cropped: Image.Image) -> None:
@@ -71,31 +74,46 @@ def generate_vector_drawable(cropped: Image.Image) -> None:
     print(f"Wrote {out} ({len(rects)} rects)")
 
 
-def square_rgba(image: Image.Image) -> Image.Image:
-    side = max(image.size)
-    square = Image.new("RGBA", (side, side), (0, 0, 0, 0))
-    ox = (side - image.width) // 2
-    oy = (side - image.height) // 2
-    square.paste(image, (ox, oy), image)
-    return square
+def fit_on_canvas(
+    image: Image.Image,
+    canvas_size: int,
+    content_ratio: float,
+    background: tuple[int, int, int, int],
+) -> Image.Image:
+    target_side = max(1, round(canvas_size * content_ratio))
+    scale = min(target_side / image.width, target_side / image.height)
+    resized = image.resize(
+        (max(1, round(image.width * scale)), max(1, round(image.height * scale))),
+        Image.Resampling.LANCZOS,
+    )
+    canvas = Image.new("RGBA", (canvas_size, canvas_size), background)
+    offset = (
+        (canvas_size - resized.width) // 2,
+        (canvas_size - resized.height) // 2,
+    )
+    canvas.paste(resized, offset, resized)
+    return canvas
 
 
 def save_transparent_png(cropped: Image.Image) -> None:
-    final = square_rgba(cropped).resize((512, 512), Image.Resampling.LANCZOS)
+    final = fit_on_canvas(
+        cropped,
+        canvas_size=TRANSPARENT_CANVAS,
+        content_ratio=TRANSPARENT_CONTENT_RATIO,
+        background=(0, 0, 0, 0),
+    )
     out = DRAWABLE / "logo_transparent.png"
     final.save(out, optimize=True)
     print(f"Wrote {out} ({out.stat().st_size} bytes)")
 
 
-def save_launcher_png(launcher: Image.Image) -> Path:
-    bbox = launcher.getbbox()
-    if bbox:
-        launcher = launcher.crop(bbox)
-    square = Image.new("RGBA", (max(launcher.size), max(launcher.size)), CREAM)
-    ox = (square.width - launcher.width) // 2
-    oy = (square.height - launcher.height) // 2
-    square.paste(launcher, (ox, oy), launcher)
-    final = square.resize((512, 512), Image.Resampling.LANCZOS).convert("RGB")
+def save_launcher_png(source: Image.Image) -> Path:
+    final = fit_on_canvas(
+        source.convert("RGBA"),
+        canvas_size=ICON_CANVAS,
+        content_ratio=ICON_IMAGE_RATIO,
+        background=CREAM,
+    ).convert("RGB")
     out = DRAWABLE / "logo_icon.png"
     final.save(out, optimize=True, quality=95)
     print(f"Wrote {out} ({out.stat().st_size} bytes)")
@@ -121,28 +139,21 @@ def generate_mipmaps(launcher_path: Path) -> None:
             print(f"Wrote {out}")
 
 
-def generate_play_store_icon(launcher_path: Path) -> None:
-    play_dir = REPO / "playstore"
-    play_dir.mkdir(parents=True, exist_ok=True)
-    out = play_dir / "icon_512x512.png"
+def generate_store_icon(launcher_path: Path) -> None:
+    STORES.mkdir(parents=True, exist_ok=True)
+    out = STORES / "icon_512x512.png"
     Image.open(launcher_path).convert("RGB").save(out, optimize=True, quality=95)
     print(f"Wrote {out} ({out.stat().st_size} bytes)")
 
 
 def main() -> None:
-    transparent = Image.open(TRANSPARENT_SRC).convert("RGBA")
-    bbox = transparent.getbbox()
-    if not bbox:
-        raise RuntimeError("Transparent logo has no visible content.")
-    cropped = transparent.crop(bbox)
+    transparent = crop_visible_rgba(Image.open(TRANSPARENT_SRC).convert("RGBA"))
+    generate_vector_drawable(transparent)
+    save_transparent_png(transparent)
 
-    generate_vector_drawable(cropped)
-    save_transparent_png(cropped)
-
-    launcher = Image.open(LAUNCHER_SRC).convert("RGBA")
-    launcher_path = save_launcher_png(launcher)
+    launcher_path = save_launcher_png(Image.open(LAUNCHER_SRC))
     generate_mipmaps(launcher_path)
-    generate_play_store_icon(launcher_path)
+    generate_store_icon(launcher_path)
 
 
 if __name__ == "__main__":

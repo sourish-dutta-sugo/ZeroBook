@@ -238,7 +238,7 @@ fun SetupScreen(
                 title = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Image(
-                            painter = painterResource(R.drawable.logo_icon),
+                            painter = painterResource(R.drawable.logo_transparent),
                             contentDescription = "ZeroBook",
                             modifier = Modifier.size(36.dp),
                             contentScale = ContentScale.Fit

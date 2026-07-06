@@ -13,10 +13,10 @@
             #FAF8F5
         </item>
         <item name="windowSplashScreenAnimatedIcon">
-            @null
+            @drawable/logo_transparent
         </item>
         <item name="windowSplashScreenIconBackgroundColor">
-            #FAF8F5
+            @android:color/transparent
         </item>
         <item name="postSplashScreenTheme">
             @style/Theme.ZeroBook

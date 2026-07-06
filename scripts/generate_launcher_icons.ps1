@@ -1,9 +1,9 @@
 <#
-Generate Android launcher mipmaps and Play Store icon from a single source image.
+Generate Android launcher mipmaps and marketplace/store icon from a single source image.
 Usage (from repo root):
   powershell -ExecutionPolicy Bypass -File scripts\generate_launcher_icons.ps1 \
     -SourceImage "app/src/main/res/drawable/logo_icon.png" \
-    -PlayStoreOut "playstore/icon_512x512.png" \
+    -StoreIconOut "stores/icon_512x512.png" \
     -RemoveLegacy
 
 Requirements: ImageMagick installed (`magick` command available).
@@ -15,7 +15,7 @@ param(
 
     [string]$ResRoot = "app/src/main/res",
 
-    [string]$PlayStoreOut = "playstore/icon_512x512.png",
+    [string]$StoreIconOut = "stores/icon_512x512.png",
 
     [switch]$RemoveLegacy
 )
@@ -53,13 +53,13 @@ $xx = Join-Path $ResRoot 'mipmap-xxhdpi\ic_launcher.png'
 if (Test-Path $xxx) { Copy-Item $xxx -Destination (Join-Path $ResRoot 'mipmap-xxxhdpi\ic_launcher_round.png') -Force }
 if (Test-Path $xx)  { Copy-Item $xx  -Destination (Join-Path $ResRoot 'mipmap-xxhdpi\ic_launcher_round.png') -Force }
 
-# Generate Play Store 512x512
-$playDir = Split-Path $PlayStoreOut -Parent
-if ($playDir) { Ensure-Dir $playDir }
-Write-Host "Generating Play Store icon: $PlayStoreOut (512x512)"
-magick convert $SourceImage -resize 512x512 $PlayStoreOut
+# Generate marketplace/store icon 512x512
+$storeDir = Split-Path $StoreIconOut -Parent
+if ($storeDir) { Ensure-Dir $storeDir }
+Write-Host "Generating store icon: $StoreIconOut (512x512)"
+magick convert $SourceImage -resize 512x512 $StoreIconOut
 
-Write-Host "Done. Files written under $ResRoot and $PlayStoreOut."
+Write-Host "Done. Files written under $ResRoot and $StoreIconOut."
 
 if ($RemoveLegacy.IsPresent) {
     $legacy = Join-Path $ResRoot 'drawable\zerobook_icon.png'

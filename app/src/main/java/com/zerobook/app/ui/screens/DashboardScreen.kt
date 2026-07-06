@@ -321,7 +321,7 @@ fun DashboardScreen(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Image(
-                    painter = painterResource(R.drawable.logo_icon),
+                    painter = painterResource(R.drawable.logo_transparent),
                     contentDescription = "ZeroBook",
                     modifier = Modifier.size(32.dp),
                     contentScale = ContentScale.Fit

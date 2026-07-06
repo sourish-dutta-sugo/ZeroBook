@@ -6,6 +6,9 @@ plugins {
   alias(libs.plugins.secrets)
 }
 
+val releaseKeystorePath = System.getenv("KEYSTORE_PATH") ?: "${rootDir}/my-upload-key.jks"
+val hasReleaseKeystore = file(releaseKeystorePath).exists()
+
 android {
   namespace = "com.zerobook.app"
   compileSdk = 36
@@ -20,17 +23,12 @@ android {
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-    ndk {
-      abiFilters += listOf("armeabi-v7a", "arm64-v8a")
-    }
-
     resourceConfigurations += listOf("en")
   }
 
   signingConfigs {
     create("release") {
-      val keystorePath = System.getenv("KEYSTORE_PATH") ?: "${rootDir}/my-upload-key.jks"
-      storeFile = file(keystorePath)
+      storeFile = file(releaseKeystorePath)
       storePassword = System.getenv("STORE_PASSWORD")
       keyAlias = "upload"
       keyPassword = System.getenv("KEY_PASSWORD")
@@ -43,9 +41,20 @@ android {
       isMinifyEnabled = true
       isShrinkResources = true
       proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-      signingConfig = signingConfigs.getByName("release")
+      if (hasReleaseKeystore) {
+        signingConfig = signingConfigs.getByName("release")
+      }
     }
     debug {
+      isCrunchPngs = false
+    }
+  }
+  splits {
+    abi {
+      isEnable = true
+      reset()
+      include("armeabi-v7a", "arm64-v8a")
+      isUniversalApk = false
     }
   }
   compileOptions {
@@ -60,9 +69,14 @@ android {
     buildConfigField("String", "GOOGLE_CLIENT_ID", "\"410477764687-qk981vbhhhhia5nc06utcc5m5iag6rmk.apps.googleusercontent.com\"")
   }
   packaging {
+    jniLibs {
+      useLegacyPackaging = false
+    }
     resources {
       excludes += setOf(
+        "META-INF/AL2.0",
         "META-INF/DEPENDENCIES",
+        "META-INF/LGPL2.1",
         "META-INF/LICENSE",
         "META-INF/LICENSE.md",
         "META-INF/NOTICE",

@@ -11,11 +11,11 @@ Automatic (recommended)
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts\generate_launcher_icons.ps1 \
   -SourceImage "app/src/main/res/drawable/logo_icon.png" \
-  -PlayStoreOut "playstore/icon_512x512.png" \
+  -StoreIconOut "stores/icon_512x512.png" \
   -RemoveLegacy
 ```
 
-This will create mipmap images under `app/src/main/res/mipmap-*` and a Play Store icon at `playstore/icon_512x512.png`. The script will also delete `app/src/main/res/drawable/zerobook_icon.png` if `-RemoveLegacy` is provided.
+This will create mipmap images under `app/src/main/res/mipmap-*` and a generic marketplace icon at `stores/icon_512x512.png`. The script will also delete `app/src/main/res/drawable/zerobook_icon.png` if `-RemoveLegacy` is provided.
 
 Manual (Android Studio)
 - Open `Image Asset` in Android Studio: `File` → `New` → `Image Asset`.

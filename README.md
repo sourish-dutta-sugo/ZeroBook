@@ -80,7 +80,7 @@ ZeroBook---Only Android/
 
 │       └── utils/        # HSN lookup, file picker, helpers
 
-├── playstore/            # Store listing assets (icon, feature graphic)
+├── stores/            # Store and marketplace listing assets (icon, feature graphic)
 
 ├── gradle/                # Version catalog (libs.versions.toml), wrapper
 
