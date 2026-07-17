@@ -138,11 +138,11 @@ private data class VoucherTypeCardData(
 )
 
 private fun voucherTypeCards(): List<VoucherTypeCardData> = listOf(
+    VoucherTypeCardData("JOURNAL", "Journal", "Manual ledger adjustment", Icons.Outlined.Edit, Color(0xFF475569)),
     VoucherTypeCardData("SALE", "Sales", "Record sales to customers", Icons.AutoMirrored.Filled.ReceiptLong, Color(0xFF16A34A)),
     VoucherTypeCardData("PURCHASE", "Purchase", "Record purchases from suppliers", Icons.Default.Store, Color(0xFF7C3AED)),
     VoucherTypeCardData("RECEIPT", "Receipt", "Receive customer payments", Icons.Default.Payments, Color(0xFF059669)),
     VoucherTypeCardData("PAYMENT", "Payment", "Record outgoing payments", Icons.Default.CreditCard, Color(0xFFDC2626)),
-    VoucherTypeCardData("JOURNAL", "Journal", "Manual ledger adjustment", Icons.Outlined.Edit, Color(0xFF475569)),
     VoucherTypeCardData("SALE_RETURN", "Sales Return", "Customer returns goods", Icons.Default.SwapHoriz, Color(0xFFEA580C)),
     VoucherTypeCardData("PURCHASE_RETURN", "Purchase Return", "Return goods to supplier", Icons.Default.SwapHoriz, Color(0xFFB91C1C)),
     VoucherTypeCardData("BILLS_RECEIVABLE", "Bills Receivable", "View amounts owed to you", Icons.AutoMirrored.Filled.ReceiptLong, Color(0xFF0F766E)),
