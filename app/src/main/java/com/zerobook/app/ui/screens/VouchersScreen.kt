@@ -22,6 +22,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -137,11 +138,11 @@ private data class VoucherTypeCardData(
 )
 
 private fun voucherTypeCards(): List<VoucherTypeCardData> = listOf(
-    VoucherTypeCardData("JOURNAL", "Journal", "Manual ledger-style entry", Icons.Outlined.Edit, Color(0xFF334155)),
-    VoucherTypeCardData("SALE", "Sales", "Record a sale to customer", Icons.AutoMirrored.Filled.ReceiptLong, Color(0xFF2563EB)),
-    VoucherTypeCardData("PURCHASE", "Purchase", "Record purchase from supplier", Icons.Default.Store, Color(0xFF7C3AED)),
-    VoucherTypeCardData("RECEIPT", "Receipt", "Receive payment from customer", Icons.Default.Payments, Color(0xFF059669)),
-    VoucherTypeCardData("PAYMENT", "Payment", "Pay a supplier or expense", Icons.Default.CreditCard, Color(0xFFDC2626)),
+    VoucherTypeCardData("SALE", "Sales", "Record sales to customers", Icons.AutoMirrored.Filled.ReceiptLong, Color(0xFF16A34A)),
+    VoucherTypeCardData("PURCHASE", "Purchase", "Record purchases from suppliers", Icons.Default.Store, Color(0xFF7C3AED)),
+    VoucherTypeCardData("RECEIPT", "Receipt", "Receive customer payments", Icons.Default.Payments, Color(0xFF059669)),
+    VoucherTypeCardData("PAYMENT", "Payment", "Record outgoing payments", Icons.Default.CreditCard, Color(0xFFDC2626)),
+    VoucherTypeCardData("JOURNAL", "Journal", "Manual ledger adjustment", Icons.Outlined.Edit, Color(0xFF475569)),
     VoucherTypeCardData("SALE_RETURN", "Sales Return", "Customer returns goods", Icons.Default.SwapHoriz, Color(0xFFEA580C)),
     VoucherTypeCardData("PURCHASE_RETURN", "Purchase Return", "Return goods to supplier", Icons.Default.SwapHoriz, Color(0xFFB91C1C)),
     VoucherTypeCardData("BILLS_RECEIVABLE", "Bills Receivable", "View amounts owed to you", Icons.AutoMirrored.Filled.ReceiptLong, Color(0xFF0F766E)),
@@ -150,8 +151,8 @@ private fun voucherTypeCards(): List<VoucherTypeCardData> = listOf(
     VoucherTypeCardData("CREDIT_NOTE", "Credit Note", "Issue credit to party", Icons.Default.Description, Color(0xFF1D4ED8)),
     VoucherTypeCardData("QUOTATION", "Quotation", "Create estimate or quote", Icons.Default.RequestQuote, Color(0xFF4F46E5)),
     VoucherTypeCardData("DELIVERY_CHALLAN", "Delivery Challan", "Record goods dispatch", Icons.Default.LocalShipping, Color(0xFF0891B2)),
-    VoucherTypeCardData("INCOME", "Income", "Track incoming funds", Icons.Default.Payments, Color(0xFF0F766E)),
-    VoucherTypeCardData("EXPENSE", "Expense", "Record a business expense", Icons.Default.Inventory2, Color(0xFFBE185D))
+    VoucherTypeCardData("INCOME", "Income", "Track incoming funds", Icons.Default.Payments, Color(0xFF0D9488)),
+    VoucherTypeCardData("EXPENSE", "Expense", "Record a business expense", Icons.Default.Inventory2, Color(0xFFDB2777))
 )
 
 private fun voucherTypeLabel(type: String): String = when (type) {
@@ -244,7 +245,24 @@ private val voucherSortOptions = listOf(
     VoucherSortOption(SORT_PARTY_NAME_ZA, "Party Name (Z–A)")
 )
 
-private fun voucherBadgeColor(type: String): Color = AppColors.primary
+private fun voucherBadgeColor(type: String): Color = when (type) {
+    "SALE" -> Color(0xFF16A34A)
+    "PURCHASE" -> Color(0xFF7C3AED)
+    "RECEIPT" -> Color(0xFF059669)
+    "PAYMENT" -> Color(0xFFDC2626)
+    "JOURNAL" -> Color(0xFF475569)
+    "SALE_RETURN" -> Color(0xFFEA580C)
+    "PURCHASE_RETURN" -> Color(0xFFB91C1C)
+    "BILLS_RECEIVABLE" -> Color(0xFF0F766E)
+    "BILLS_PAYABLE" -> Color(0xFF92400E)
+    "DEBIT_NOTE" -> Color(0xFF9333EA)
+    "CREDIT_NOTE" -> Color(0xFF1D4ED8)
+    "QUOTATION" -> Color(0xFF4F46E5)
+    "DELIVERY_CHALLAN" -> Color(0xFF0891B2)
+    "INCOME" -> Color(0xFF0D9488)
+    "EXPENSE" -> Color(0xFFDB2777)
+    else -> AppColors.primary
+}
 
 private fun voucherSortLabel(sortOption: String): String =
     voucherSortOptions.firstOrNull { it.value == sortOption }?.label ?: "Default order"
@@ -773,7 +791,7 @@ fun VouchersScreen(
         Row(modifier = Modifier.fillMaxSize()) {
             Box(modifier = Modifier.width(360.dp).fillMaxHeight()) {
                 Scaffold(
-                    containerColor = Color(0xFFF2F4F7),
+                    containerColor = AppColors.screenBg,
                     snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
                     topBar = {
                         if (selectionController.isSelectionActive) {
@@ -791,12 +809,23 @@ fun VouchersScreen(
                             onClick = { navigateToNewVoucher(null) },
                             containerColor = AppColors.primary,
                             contentColor = AppColors.textOnPrimary,
+                            shape = CircleShape,
+                            elevation = FloatingActionButtonDefaults.elevation(
+                                defaultElevation = 6.dp,
+                                pressedElevation = 10.dp
+                            ),
                             modifier = Modifier
+                                .size(56.dp)
                                 .premiumFabEntrance()
                                 .pressScale()
+                                .shadow(8.dp, CircleShape, ambientColor = AppColors.primary.copy(alpha = 0.25f))
                                 .testTag("add_voucher_fab")
                         ) {
-                            Icon(imageVector = Icons.Default.Add, contentDescription = "Add Voucher")
+                            Icon(
+                                imageVector = Icons.Default.Add,
+                                contentDescription = "Add Voucher",
+                                modifier = Modifier.size(24.dp)
+                            )
                         }
                     }
                 ) { innerPadding ->
@@ -804,66 +833,149 @@ fun VouchersScreen(
                         modifier = Modifier
                             .fillMaxSize()
                             .background(AppColors.screenBg)
-                            .padding(innerPadding)
-                            .padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                            .padding(innerPadding),
+                        verticalArrangement = Arrangement.spacedBy(0.dp)
                     ) {
-                        Text(
-                            text = "Vouchers",
-                            fontSize = 22.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = AppColors.textPrimary
-                        )
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(start = 20.dp, end = 20.dp, top = 24.dp, bottom = 0.dp)
+                        ) {
+                            Text(
+                                text = "Vouchers",
+                                fontSize = 28.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = AppColors.textPrimary,
+                                letterSpacing = (-0.5).sp
+                            )
+                        }
 
-                        RetailTextField(
-                            value = searchQuery,
-                            onValueChange = { searchQuery = it },
-                            label = "Search Vouchers",
-                            placeholder = "Search by voucher...",
-                            trailingIcon = { Icon(imageVector = Icons.Default.Search, contentDescription = null, tint = AppColors.textSecondary) },
-                            modifier = Modifier.fillMaxWidth().testTag("voucher_search_bar")
-                        )
+                        Spacer(modifier = Modifier.height(20.dp))
+
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 20.dp)
+                        ) {
+                            OutlinedTextField(
+                                value = searchQuery,
+                                onValueChange = { searchQuery = it },
+                                placeholder = {
+                                    Text(
+                                        "Search vouchers...",
+                                        color = AppColors.textTertiary,
+                                        fontSize = 14.sp
+                                    )
+                                },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Default.Search,
+                                        contentDescription = null,
+                                        tint = AppColors.textTertiary,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                },
+                                trailingIcon = {
+                                    if (searchQuery.isNotBlank()) {
+                                        IconButton(onClick = { searchQuery = "" }) {
+                                            Icon(
+                                                imageVector = Icons.Default.Close,
+                                                contentDescription = "Clear",
+                                                tint = AppColors.textTertiary,
+                                                modifier = Modifier.size(18.dp)
+                                            )
+                                        }
+                                    }
+                                },
+                                singleLine = true,
+                                shape = RoundedCornerShape(999.dp),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedTextColor = AppColors.textPrimary,
+                                    unfocusedTextColor = AppColors.textPrimary,
+                                    focusedContainerColor = AppColors.cardBg.copy(alpha = 0.85f),
+                                    unfocusedContainerColor = AppColors.cardBg.copy(alpha = 0.85f),
+                                    focusedBorderColor = AppColors.border,
+                                    unfocusedBorderColor = AppColors.border,
+                                    cursorColor = AppColors.primary
+                                ),
+                                textStyle = androidx.compose.ui.text.TextStyle(fontSize = 14.sp),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .shadow(2.dp, RoundedCornerShape(999.dp), ambientColor = Color(0x0A000000))
+                                    .testTag("voucher_search_bar")
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(12.dp))
 
                         Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.End,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 20.dp),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             BadgedBox(
                                 badge = {
                                     if (appliedFilterState.activeFilterCount > 0) {
-                                        Badge(containerColor = AppColors.primary, contentColor = AppColors.textOnPrimary) {
-                                            Text(appliedFilterState.activeFilterCount.toString())
-                                        }
+                                        Badge(
+                                            containerColor = AppColors.primary,
+                                            contentColor = AppColors.textOnPrimary,
+                                            modifier = Modifier.size(8.dp)
+                                        ) {}
                                     }
                                 }
                             ) {
-                                OutlinedButton(onClick = { pendingFilterState = appliedFilterState; showFilterSheet = true }, contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)) {
+                                OutlinedButton(
+                                    onClick = { pendingFilterState = appliedFilterState; showFilterSheet = true },
+                                    shape = RoundedCornerShape(999.dp),
+                                    border = BorderStroke(1.dp, AppColors.border),
+                                    colors = ButtonDefaults.outlinedButtonColors(
+                                        containerColor = AppColors.cardBg.copy(alpha = 0.7f),
+                                        contentColor = AppColors.textSecondary
+                                    ),
+                                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
+                                ) {
                                     Icon(Icons.Default.FilterList, contentDescription = null, modifier = Modifier.size(16.dp))
                                     Spacer(modifier = Modifier.width(6.dp))
-                                    Text("Filter")
+                                    Text("Filter", fontSize = 13.sp, fontWeight = FontWeight.Medium)
                                 }
                             }
-                            Spacer(modifier = Modifier.width(8.dp))
-                            OutlinedButton(onClick = { pendingSortOption = appliedSortOption; showSortSheet = true }, contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)) {
+                            OutlinedButton(
+                                onClick = { pendingSortOption = appliedSortOption; showSortSheet = true },
+                                shape = RoundedCornerShape(999.dp),
+                                border = BorderStroke(1.dp, AppColors.border),
+                                colors = ButtonDefaults.outlinedButtonColors(
+                                    containerColor = AppColors.cardBg.copy(alpha = 0.7f),
+                                    contentColor = AppColors.textSecondary
+                                ),
+                                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
+                            ) {
                                 Icon(Icons.Default.KeyboardArrowDown, contentDescription = null, modifier = Modifier.size(16.dp))
                                 Spacer(modifier = Modifier.width(6.dp))
-                                Text(if (appliedSortOption == SORT_DEFAULT) "Sort" else "Sort: ${voucherSortLabel(appliedSortOption)}")
+                                Text(
+                                    if (appliedSortOption == SORT_DEFAULT) "Sort" else "Sort: ${voucherSortLabel(appliedSortOption)}",
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Medium
+                                )
                             }
                         }
 
                         if (appliedFilterState.activeFilterCount > 0) {
+                            Spacer(modifier = Modifier.height(10.dp))
                             FlowRow(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 20.dp),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                verticalArrangement = Arrangement.spacedBy(6.dp)
                             ) {
                                 appliedFilterState.toActiveChips().forEach { chip ->
                                     InputChip(
                                         selected = false,
                                         onClick = { appliedFilterState = appliedFilterState.removeFilter(chip.key) },
-                                        label = { Text(chip.label) },
-                                        trailingIcon = { Icon(Icons.Default.Close, contentDescription = null) }
+                                        label = { Text(chip.label, fontSize = 12.sp) },
+                                        trailingIcon = { Icon(Icons.Default.Close, contentDescription = null, modifier = Modifier.size(14.dp)) }
                                     )
                                 }
                                 AssistChip(
@@ -871,11 +983,13 @@ fun VouchersScreen(
                                         appliedFilterState = VoucherFilterState()
                                         pendingFilterState = VoucherFilterState()
                                     },
-                                    label = { Text("Clear All") },
-                                    leadingIcon = { Icon(Icons.Default.Close, contentDescription = null) }
+                                    label = { Text("Clear All", fontSize = 12.sp) },
+                                    leadingIcon = { Icon(Icons.Default.Close, contentDescription = null, modifier = Modifier.size(14.dp)) }
                                 )
                             }
                         }
+
+                        Spacer(modifier = Modifier.height(8.dp))
 
                         if (displayedVouchers.isEmpty()) {
                             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -898,20 +1012,22 @@ fun VouchersScreen(
                         } else {
                             LazyColumn(
                                 state = desktopVoucherListState,
-                                verticalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalArrangement = Arrangement.spacedBy(10.dp),
+                                contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 88.dp),
                                 modifier = Modifier.fillMaxSize()
                             ) {
                                 items(displayedVouchers, key = { it.id }) { voucher ->
                                     val partyName = voucher.partyId?.let { partyNameById[it] } ?: "Cash / Bank Account"
                                     val isSelected = selectedVoucherId == voucher.id
+                                    val badgeColor = voucherBadgeColor(voucher.type)
                                     Card(
                                         modifier = Modifier
                                             .fillMaxWidth()
-                                            .shadow(6.dp, RoundedCornerShape(16.dp))
+                                            .shadow(3.dp, RoundedCornerShape(14.dp), ambientColor = Color(0x08000000))
                                             .border(
                                                 1.dp,
-                                                if (isSelected || selectionController.isSelected(voucher.id)) AppColors.primary.copy(alpha = 0.35f) else AppColors.border.copy(alpha = 0.7f),
-                                                RoundedCornerShape(16.dp)
+                                                if (isSelected || selectionController.isSelected(voucher.id)) AppColors.primary.copy(alpha = 0.35f) else AppColors.border.copy(alpha = 0.5f),
+                                                RoundedCornerShape(14.dp)
                                             )
                                             .premiumCombinedClickable(
                                                 onClick = {
@@ -926,7 +1042,7 @@ fun VouchersScreen(
                                         colors = CardDefaults.cardColors(
                                             containerColor = if (isSelected || selectionController.isSelected(voucher.id)) AppColors.primary.copy(alpha = 0.06f) else AppColors.cardBg
                                         ),
-                                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                                        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
                                     ) {
                                         Column(modifier = Modifier.padding(14.dp)) {
                                             Row(
@@ -936,31 +1052,31 @@ fun VouchersScreen(
                                             ) {
                                                 Text(
                                                     text = voucher.voucherNo,
-                                                    fontWeight = FontWeight.Bold,
-                                                    fontSize = 12.sp,
-                                                    color = Color(0xFF111827)
+                                                    fontWeight = FontWeight.SemiBold,
+                                                    fontSize = 13.sp,
+                                                    color = AppColors.textPrimary
                                                 )
-                                                Card(
-                                                    colors = CardDefaults.cardColors(containerColor = AppColors.primary.copy(alpha = 0.12f)),
-                                                    shape = RoundedCornerShape(8.dp)
+                                                Surface(
+                                                    shape = RoundedCornerShape(6.dp),
+                                                    color = badgeColor.copy(alpha = 0.1f)
                                                 ) {
                                                     Text(
                                                         text = voucherTypeLabel(voucher.type),
-                                                        color = AppColors.primary,
-                                                        fontSize = 9.sp,
+                                                        color = badgeColor,
+                                                        fontSize = 10.sp,
                                                         fontWeight = FontWeight.SemiBold,
-                                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                                                     )
                                                 }
                                             }
-                                            Spacer(modifier = Modifier.height(4.dp))
+                                            Spacer(modifier = Modifier.height(6.dp))
                                             Text(
                                                 text = partyName,
-                                                fontSize = 11.sp,
+                                                fontSize = 13.sp,
                                                 fontWeight = FontWeight.Medium,
-                                                color = Color(0xFF374151)
+                                                color = AppColors.textSecondary
                                             )
-                                            Spacer(modifier = Modifier.height(6.dp))
+                                            Spacer(modifier = Modifier.height(8.dp))
                                             Row(
                                                 modifier = Modifier.fillMaxWidth(),
                                                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -968,14 +1084,14 @@ fun VouchersScreen(
                                             ) {
                                                 Text(
                                                     text = Utils.formatDate(voucher.date),
-                                                    fontSize = 10.sp,
-                                                    color = AppColors.textSecondary
+                                                    fontSize = 11.sp,
+                                                    color = AppColors.textTertiary
                                                 )
                                                 Text(
                                                     text = Utils.formatIndianCurrency(voucher.netAmount),
                                                     fontWeight = FontWeight.Bold,
-                                                    fontSize = 12.sp,
-                                                    color = Color(0xFF111827)
+                                                    fontSize = 14.sp,
+                                                    color = AppColors.textPrimary
                                                 )
                                             }
                                         }
@@ -1010,7 +1126,7 @@ fun VouchersScreen(
         }
     } else {
         Scaffold(
-            containerColor = Color(0xFFF2F4F7),
+            containerColor = AppColors.screenBg,
             snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
             topBar = {
                 if (selectionController.isSelectionActive) {
@@ -1028,12 +1144,23 @@ fun VouchersScreen(
                     onClick = { navigateToNewVoucher(null) },
                     containerColor = AppColors.primary,
                     contentColor = AppColors.textOnPrimary,
+                    shape = CircleShape,
+                    elevation = FloatingActionButtonDefaults.elevation(
+                        defaultElevation = 6.dp,
+                        pressedElevation = 10.dp
+                    ),
                     modifier = Modifier
+                        .size(56.dp)
                         .premiumFabEntrance()
                         .pressScale()
+                        .shadow(8.dp, CircleShape, ambientColor = AppColors.primary.copy(alpha = 0.25f))
                         .testTag("add_voucher_fab")
                 ) {
-                    Icon(imageVector = Icons.Default.Add, contentDescription = "Add Voucher")
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = "Add Voucher",
+                        modifier = Modifier.size(24.dp)
+                    )
                 }
             }
         ) { innerPadding ->
@@ -1041,67 +1168,149 @@ fun VouchersScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(AppColors.screenBg)
-                    .padding(innerPadding)
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                    .padding(innerPadding),
+                verticalArrangement = Arrangement.spacedBy(0.dp)
             ) {
-                Text(
-                    text = "Vouchers",
-                    fontSize = 22.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = AppColors.textPrimary
-                )
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 20.dp, end = 20.dp, top = 24.dp, bottom = 0.dp)
+                ) {
+                    Text(
+                        text = "Vouchers",
+                        fontSize = 28.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = AppColors.textPrimary,
+                        letterSpacing = (-0.5).sp
+                    )
+                }
 
-                // Search Bar
-                RetailTextField(
-                    value = searchQuery,
-                    onValueChange = { searchQuery = it },
-                    label = "Search Vouchers",
-                    placeholder = "Search by voucher number or party...",
-                    trailingIcon = { Icon(imageVector = Icons.Default.Search, contentDescription = null, tint = AppColors.textSecondary) },
-                    modifier = Modifier.fillMaxWidth().testTag("voucher_search_bar")
-                )
+                Spacer(modifier = Modifier.height(20.dp))
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp)
+                ) {
+                    OutlinedTextField(
+                        value = searchQuery,
+                        onValueChange = { searchQuery = it },
+                        placeholder = {
+                            Text(
+                                "Search vouchers...",
+                                color = AppColors.textTertiary,
+                                fontSize = 14.sp
+                            )
+                        },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.Search,
+                                contentDescription = null,
+                                tint = AppColors.textTertiary,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        },
+                        trailingIcon = {
+                            if (searchQuery.isNotBlank()) {
+                                IconButton(onClick = { searchQuery = "" }) {
+                                    Icon(
+                                        imageVector = Icons.Default.Close,
+                                        contentDescription = "Clear",
+                                        tint = AppColors.textTertiary,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                            }
+                        },
+                        singleLine = true,
+                        shape = RoundedCornerShape(999.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedTextColor = AppColors.textPrimary,
+                            unfocusedTextColor = AppColors.textPrimary,
+                            focusedContainerColor = AppColors.cardBg.copy(alpha = 0.85f),
+                            unfocusedContainerColor = AppColors.cardBg.copy(alpha = 0.85f),
+                            focusedBorderColor = AppColors.border,
+                            unfocusedBorderColor = AppColors.border,
+                            cursorColor = AppColors.primary
+                        ),
+                        textStyle = androidx.compose.ui.text.TextStyle(fontSize = 14.sp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .shadow(2.dp, RoundedCornerShape(999.dp), ambientColor = Color(0x0A000000))
+                            .testTag("voucher_search_bar")
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
 
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     BadgedBox(
                         badge = {
                             if (appliedFilterState.activeFilterCount > 0) {
-                                Badge(containerColor = AppColors.primary, contentColor = AppColors.textOnPrimary) {
-                                    Text(appliedFilterState.activeFilterCount.toString())
-                                }
+                                Badge(
+                                    containerColor = AppColors.primary,
+                                    contentColor = AppColors.textOnPrimary,
+                                    modifier = Modifier.size(8.dp)
+                                ) {}
                             }
                         }
                     ) {
-                        OutlinedButton(onClick = { pendingFilterState = appliedFilterState; showFilterSheet = true }, contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)) {
+                        OutlinedButton(
+                            onClick = { pendingFilterState = appliedFilterState; showFilterSheet = true },
+                            shape = RoundedCornerShape(999.dp),
+                            border = BorderStroke(1.dp, AppColors.border),
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                containerColor = AppColors.cardBg.copy(alpha = 0.7f),
+                                contentColor = AppColors.textSecondary
+                            ),
+                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
+                        ) {
                             Icon(Icons.Default.FilterList, contentDescription = null, modifier = Modifier.size(16.dp))
                             Spacer(modifier = Modifier.width(6.dp))
-                            Text("Filter")
+                            Text("Filter", fontSize = 13.sp, fontWeight = FontWeight.Medium)
                         }
                     }
-                    Spacer(modifier = Modifier.width(8.dp))
-                    OutlinedButton(onClick = { pendingSortOption = appliedSortOption; showSortSheet = true }, contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)) {
+                    OutlinedButton(
+                        onClick = { pendingSortOption = appliedSortOption; showSortSheet = true },
+                        shape = RoundedCornerShape(999.dp),
+                        border = BorderStroke(1.dp, AppColors.border),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            containerColor = AppColors.cardBg.copy(alpha = 0.7f),
+                            contentColor = AppColors.textSecondary
+                        ),
+                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
+                    ) {
                         Icon(Icons.Default.KeyboardArrowDown, contentDescription = null, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text(if (appliedSortOption == SORT_DEFAULT) "Sort" else "Sort: ${voucherSortLabel(appliedSortOption)}")
+                        Text(
+                            if (appliedSortOption == SORT_DEFAULT) "Sort" else "Sort: ${voucherSortLabel(appliedSortOption)}",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium
+                        )
                     }
                 }
 
                 if (appliedFilterState.activeFilterCount > 0) {
+                    Spacer(modifier = Modifier.height(10.dp))
                     FlowRow(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 20.dp),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         appliedFilterState.toActiveChips().forEach { chip ->
                             InputChip(
                                 selected = false,
                                 onClick = { appliedFilterState = appliedFilterState.removeFilter(chip.key) },
-                                label = { Text(chip.label) },
-                                trailingIcon = { Icon(Icons.Default.Close, contentDescription = null) }
+                                label = { Text(chip.label, fontSize = 12.sp) },
+                                trailingIcon = { Icon(Icons.Default.Close, contentDescription = null, modifier = Modifier.size(14.dp)) }
                             )
                         }
                         AssistChip(
@@ -1109,11 +1318,13 @@ fun VouchersScreen(
                                 appliedFilterState = VoucherFilterState()
                                 pendingFilterState = VoucherFilterState()
                             },
-                            label = { Text("Clear All") },
-                            leadingIcon = { Icon(Icons.Default.Close, contentDescription = null) }
+                            label = { Text("Clear All", fontSize = 12.sp) },
+                            leadingIcon = { Icon(Icons.Default.Close, contentDescription = null, modifier = Modifier.size(14.dp)) }
                         )
                     }
                 }
+
+                Spacer(modifier = Modifier.height(8.dp))
 
                 if (vouchers.isEmpty()) {
                     Box(
@@ -1132,10 +1343,17 @@ fun VouchersScreen(
                             )
                             Spacer(modifier = Modifier.height(12.dp))
                             Text(
-                                text = "No vouchers yet. Tap + to create your first sale.",
+                                text = "No vouchers yet",
                                 color = AppColors.textPrimary,
-                                fontSize = 15.sp,
-                                fontWeight = FontWeight.Medium,
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                textAlign = TextAlign.Center
+                            )
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(
+                                text = "Tap + to create your first voucher",
+                                color = AppColors.textSecondary,
+                                fontSize = 13.sp,
                                 textAlign = TextAlign.Center
                             )
                         }
@@ -1169,20 +1387,25 @@ fun VouchersScreen(
                 } else {
                     LazyColumn(
                         state = mobileVoucherListState,
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                        contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 88.dp),
                         modifier = Modifier.fillMaxSize()
                     ) {
                         items(displayedVouchers, key = { it.id }) { voucher ->
                             val partyName = voucher.partyId?.let { partyNameById[it] } ?: "Cash / Bank Account"
+                            val badgeColor = voucherBadgeColor(voucher.type)
 
                             Card(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .shadow(6.dp, RoundedCornerShape(16.dp))
+                                    .shadow(3.dp, RoundedCornerShape(14.dp), ambientColor = Color(0x08000000))
                                     .border(
                                         1.dp,
-                                        if (selectionController.isSelected(voucher.id)) AppColors.primary.copy(alpha = 0.35f) else AppColors.border.copy(alpha = 0.7f),
-                                        RoundedCornerShape(16.dp)
+                                        if (selectionController.isSelected(voucher.id))
+                                            AppColors.primary.copy(alpha = 0.35f)
+                                        else
+                                            AppColors.border.copy(alpha = 0.5f),
+                                        RoundedCornerShape(14.dp)
                                     )
                                     .premiumCombinedClickable(
                                         onClick = {
@@ -1194,8 +1417,13 @@ fun VouchersScreen(
                                         },
                                         onLongClick = { selectionController.enterSelection(voucher.id) }
                                     ),
-                                colors = CardDefaults.cardColors(containerColor = if (selectionController.isSelected(voucher.id)) AppColors.primary.copy(alpha = 0.06f) else AppColors.cardBg),
-                                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                                colors = CardDefaults.cardColors(
+                                    containerColor = if (selectionController.isSelected(voucher.id))
+                                        AppColors.primary.copy(alpha = 0.06f)
+                                    else
+                                        AppColors.cardBg
+                                ),
+                                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
                             ) {
                                 Column(modifier = Modifier.padding(14.dp)) {
                                     Row(
@@ -1205,31 +1433,31 @@ fun VouchersScreen(
                                     ) {
                                         Text(
                                             text = voucher.voucherNo,
-                                            fontWeight = FontWeight.Bold,
-                                            fontSize = 14.sp,
-                                            color = Color(0xFF111827)
+                                            fontWeight = FontWeight.SemiBold,
+                                            fontSize = 13.sp,
+                                            color = AppColors.textPrimary
                                         )
-                                        Card(
-                                            colors = CardDefaults.cardColors(containerColor = AppColors.primary.copy(alpha = 0.12f)),
-                                            shape = RoundedCornerShape(8.dp)
+                                        Surface(
+                                            shape = RoundedCornerShape(6.dp),
+                                            color = badgeColor.copy(alpha = 0.1f)
                                         ) {
                                             Text(
                                                 text = voucherTypeLabel(voucher.type),
-                                                color = AppColors.primary,
+                                                color = badgeColor,
                                                 fontSize = 10.sp,
                                                 fontWeight = FontWeight.SemiBold,
-                                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                                             )
                                         }
                                     }
-                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Spacer(modifier = Modifier.height(6.dp))
                                     Text(
                                         text = partyName,
                                         fontSize = 13.sp,
                                         fontWeight = FontWeight.Medium,
-                                        color = Color(0xFF374151)
+                                        color = AppColors.textSecondary
                                     )
-                                    Spacer(modifier = Modifier.height(6.dp))
+                                    Spacer(modifier = Modifier.height(8.dp))
                                     Row(
                                         modifier = Modifier.fillMaxWidth(),
                                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -1238,13 +1466,13 @@ fun VouchersScreen(
                                         Text(
                                             text = Utils.formatDate(voucher.date),
                                             fontSize = 11.sp,
-                                            color = AppColors.textSecondary
+                                            color = AppColors.textTertiary
                                         )
                                         Text(
                                             text = Utils.formatIndianCurrency(voucher.netAmount),
                                             fontWeight = FontWeight.Bold,
                                             fontSize = 14.sp,
-                                            color = Color(0xFF111827)
+                                            color = AppColors.textPrimary
                                         )
                                     }
                                 }
@@ -2028,16 +2256,16 @@ fun NewVoucherScreen(
             containerColor = AppColors.screenBg,
             topBar = {
                 TopAppBar(
-                    title = { Text("Select Voucher Type", fontWeight = FontWeight.Bold) },
+                    title = { Text("New Voucher", fontWeight = FontWeight.Bold) },
                     navigationIcon = {
                         IconButton(onClick = onNavigateBack) {
                             Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = AppColors.cardBg,
-                        titleContentColor = Color(0xFF0F172A),
-                        navigationIconContentColor = Color(0xFF0F172A)
+                        containerColor = AppColors.screenBg,
+                        titleContentColor = AppColors.textPrimary,
+                        navigationIconContentColor = AppColors.textPrimary
                     )
                 )
             }
@@ -2047,52 +2275,85 @@ fun NewVoucherScreen(
                     .fillMaxSize()
                     .background(AppColors.screenBg)
                     .padding(innerPadding)
-                    .padding(16.dp)
             ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp, vertical = 4.dp)
+                ) {
+                    Text(
+                        text = "Select voucher type",
+                        fontSize = 14.sp,
+                        color = AppColors.textSecondary,
+                        fontWeight = FontWeight.Normal
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
                 val voucherTypes = voucherTypeCards()
 
                 LazyVerticalGrid(
                     columns = GridCells.Fixed(if (isTablet) 2 else 1),
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(bottom = 24.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 32.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     items(voucherTypes.size) { index ->
                         val type = voucherTypes[index]
                         Card(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(110.dp)
                                 .clickable {
                                     selectedType = type.key
                                     formStep = 1
                                     step = 2
                                 }
-                                .shadow(4.dp, RoundedCornerShape(16.dp))
-                                .border(1.dp, type.accent.copy(alpha = 0.22f), RoundedCornerShape(16.dp)),
-                            colors = CardDefaults.cardColors(containerColor = Color.White),
-                            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+                                .shadow(2.dp, RoundedCornerShape(14.dp), ambientColor = Color(0x08000000))
+                                .border(1.dp, type.accent.copy(alpha = 0.15f), RoundedCornerShape(14.dp)),
+                            colors = CardDefaults.cardColors(containerColor = AppColors.cardBg),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
                         ) {
-                            Column(
+                            Row(
                                 modifier = Modifier
-                                    .fillMaxSize()
-                                    .padding(10.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.Center
+                                    .fillMaxWidth()
+                                    .padding(14.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(14.dp)
                             ) {
                                 Box(
                                     modifier = Modifier
-                                        .size(38.dp)
-                                        .background(type.accent.copy(alpha = 0.12f), RoundedCornerShape(12.dp)),
+                                        .size(42.dp)
+                                        .background(type.accent.copy(alpha = 0.1f), CircleShape),
                                     contentAlignment = Alignment.Center
                                 ) {
-                                    Icon(type.icon, contentDescription = null, tint = type.accent)
+                                    Icon(
+                                        type.icon,
+                                        contentDescription = null,
+                                        tint = type.accent,
+                                        modifier = Modifier.size(20.dp)
+                                    )
                                 }
-                                Spacer(modifier = Modifier.height(6.dp))
-                                Text(type.title, fontWeight = FontWeight.Bold, fontSize = 13.sp, color = Color(0xFF0F172A))
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Text(type.description, fontSize = 10.sp, color = Color.Gray, textAlign = TextAlign.Center)
+
+                                Column(
+                                    modifier = Modifier.weight(1f),
+                                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                                ) {
+                                    Text(
+                                        type.title,
+                                        fontWeight = FontWeight.SemiBold,
+                                        fontSize = 14.sp,
+                                        color = AppColors.textPrimary
+                                    )
+                                    Text(
+                                        type.description,
+                                        fontSize = 12.sp,
+                                        color = AppColors.textTertiary,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
                             }
                         }
                     }
