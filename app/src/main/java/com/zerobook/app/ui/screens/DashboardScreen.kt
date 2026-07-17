@@ -18,14 +18,18 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Assignment
+import androidx.compose.material.icons.automirrored.filled.ShowChart
+import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDownward
@@ -39,7 +43,6 @@ import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.BarChart
-import androidx.compose.material.icons.filled.ShowChart
 import androidx.compose.material.icons.filled.PieChart
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -80,6 +83,7 @@ import com.zerobook.app.ui.AppViewModel
 import com.zerobook.app.ui.DashboardViewModel
 import com.zerobook.app.ui.animation.premiumClickable
 import com.zerobook.app.ui.theme.AppColors
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.Calendar
 import java.util.Locale
@@ -122,7 +126,8 @@ data class KpiDetails(
 enum class ChartType { LINE, BAR, PIE }
 enum class AnalyticsFilter(val label: String) {
     TODAY("Today"), THIS_WEEK("This Week"), THIS_MONTH("This Month"),
-    THIS_QUARTER("This Quarter"), THIS_YEAR("This Year"), CUSTOM("Custom")
+    THIS_QUARTER("This Quarter"), THIS_YEAR("This Year"),
+    CUSTOM_DATE("Custom Date"), CUSTOM_DATE_RANGE("Custom Date Range")
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -757,7 +762,7 @@ fun DashboardScreen(
                                         modifier = Modifier.height(32.dp),
                                         contentPadding = PaddingValues(horizontal = 8.dp)
                                     ) {
-                                        Icon(Icons.Default.Sort, contentDescription = null, modifier = Modifier.size(14.dp))
+                                        Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = null, modifier = Modifier.size(14.dp))
                                         Spacer(Modifier.width(4.dp))
                                         Text("Sort", fontSize = 11.sp)
                                     }
@@ -969,42 +974,61 @@ private fun KpiStandardHorizontal(
     isTablet: Boolean,
     onCardClick: (KpiDetails) -> Unit
 ) {
-    val pagerState = rememberPagerState(pageCount = { cards.size })
+    val listState = rememberLazyListState()
+    val dotAlpha = remember { Animatable(1f) }
+
+    LaunchedEffect(listState.isScrollInProgress) {
+        if (!listState.isScrollInProgress) {
+            delay(1500)
+            dotAlpha.animateTo(0f, tween(400))
+        } else {
+            dotAlpha.snapTo(1f)
+        }
+    }
+
+    val currentIndex by remember {
+        derivedStateOf {
+            val info = listState.layoutInfo
+            val visible = info.visibleItemsInfo
+            if (visible.isEmpty()) 0
+            else {
+                val center = (info.viewportStartOffset + info.viewportEndOffset) / 2
+                visible.minByOrNull { kotlin.math.abs(it.offset + it.size / 2 - center) }?.index ?: 0
+            }
+        }
+    }
+
+    val cardWidthDp = if (isTablet) 320.dp else 260.dp
+
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        HorizontalPager(
-            state = pagerState,
+        LazyRow(
+            state = listState,
             modifier = Modifier.fillMaxWidth(),
             contentPadding = PaddingValues(horizontal = if (isTablet) 40.dp else 20.dp),
-            pageSpacing = 12.dp
-        ) { page ->
-            val card = cards[page]
-            val pageOffset = (pagerState.currentPage - page) + pagerState.currentPageOffsetFraction
-            val scale = 1f - (kotlin.math.abs(pageOffset) * 0.08f).coerceAtMost(0.15f)
-            val alpha = 1f - (kotlin.math.abs(pageOffset) * 0.3f).coerceAtMost(0.3f)
-            KpiPremiumCard(
-                details = card,
-                modifier = Modifier
-                    .graphicsLayer {
-                        this.scaleX = scale
-                        this.scaleY = scale
-                        this.alpha = alpha
-                    },
-                isTablet = isTablet,
-                onClick = { onCardClick(card) }
-            )
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            itemsIndexed(cards) { _, card ->
+                KpiPremiumCard(
+                    details = card,
+                    modifier = Modifier.width(cardWidthDp),
+                    isTablet = isTablet,
+                    onClick = { onCardClick(card) }
+                )
+            }
         }
-        // Page indicator dots
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .graphicsLayer { alpha = dotAlpha.value },
             horizontalArrangement = Arrangement.Center
         ) {
             repeat(cards.size) { index ->
                 Box(
                     modifier = Modifier
                         .padding(horizontal = 3.dp)
-                        .size(if (index == pagerState.currentPage) 8.dp else 5.dp)
+                        .size(if (index == currentIndex) 8.dp else 5.dp)
                         .background(
-                            if (index == pagerState.currentPage) AppColors.primary else AppColors.border,
+                            if (index == currentIndex) AppColors.primary else AppColors.border,
                             CircleShape
                         )
                 )
@@ -1019,43 +1043,72 @@ private fun KpiWalletStack(
     isTablet: Boolean,
     onCardClick: (KpiDetails) -> Unit
 ) {
-    val pagerState = rememberPagerState(pageCount = { cards.size })
-    val scope = rememberCoroutineScope()
+    val listState = rememberLazyListState()
+    val dotAlpha = remember { Animatable(1f) }
+
+    LaunchedEffect(listState.isScrollInProgress) {
+        if (!listState.isScrollInProgress) {
+            delay(1500)
+            dotAlpha.animateTo(0f, tween(400))
+        } else {
+            dotAlpha.snapTo(1f)
+        }
+    }
+
+    val currentIndex by remember {
+        derivedStateOf {
+            val info = listState.layoutInfo
+            val visible = info.visibleItemsInfo
+            if (visible.isEmpty()) 0
+            else {
+                val center = (info.viewportStartOffset + info.viewportEndOffset) / 2
+                visible.minByOrNull { kotlin.math.abs(it.offset + it.size / 2 - center) }?.index ?: 0
+            }
+        }
+    }
+
+    val cardWidthDp = if (isTablet) 320.dp else 260.dp
+    val overlapDp = (-8).dp
 
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        HorizontalPager(
-            state = pagerState,
+        LazyRow(
+            state = listState,
             modifier = Modifier.fillMaxWidth(),
             contentPadding = PaddingValues(horizontal = if (isTablet) 48.dp else 32.dp),
-            pageSpacing = (-8).dp
-        ) { page ->
-            val card = cards[page]
-            val pageOffset = (pagerState.currentPage - page) + pagerState.currentPageOffsetFraction
-            val absOffset = kotlin.math.abs(pageOffset)
-            val translationX = pageOffset * 40f
-            val scale = 1f - (absOffset * 0.06f).coerceAtMost(0.1f)
-            val alpha = 1f - (absOffset * 0.4f).coerceAtMost(0.5f)
+            horizontalArrangement = Arrangement.spacedBy(overlapDp)
+        ) {
+            itemsIndexed(cards) { index, card ->
+                val absOffset = kotlin.math.abs(
+                    (listState.layoutInfo.visibleItemsInfo.firstOrNull { it.index == index }?.offset ?: 0) -
+                        (listState.layoutInfo.viewportStartOffset + listState.layoutInfo.viewportEndOffset) / 2
+                ).toFloat()
+                val normalizedOffset = (absOffset / (cardWidthDp.value * LocalDensity.current.density)).coerceIn(0f, 2f)
+                val scale = 1f - (normalizedOffset * 0.06f).coerceAtMost(0.1f)
+                val alpha = 1f - (normalizedOffset * 0.4f).coerceAtMost(0.5f)
 
-            KpiPremiumCard(
-                details = card,
-                modifier = Modifier
-                    .graphicsLayer {
-                        this.translationX = translationX
-                        this.scaleX = scale
-                        this.scaleY = scale
-                        this.alpha = alpha
-                    }
-                    .zIndex(10f - absOffset),
-                isTablet = isTablet,
-                onClick = { onCardClick(card) }
-            )
+                KpiPremiumCard(
+                    details = card,
+                    modifier = Modifier
+                        .width(cardWidthDp)
+                        .graphicsLayer {
+                            this.scaleX = scale
+                            this.scaleY = scale
+                            this.alpha = alpha
+                        }
+                        .zIndex(10f - normalizedOffset),
+                    isTablet = isTablet,
+                    onClick = { onCardClick(card) }
+                )
+            }
         }
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .graphicsLayer { alpha = dotAlpha.value },
             horizontalArrangement = Arrangement.Center
         ) {
             repeat(cards.size) { index ->
-                val isActive = index == pagerState.currentPage
+                val isActive = index == currentIndex
                 Box(
                     modifier = Modifier
                         .padding(horizontal = 3.dp)
@@ -1077,43 +1130,74 @@ private fun KpiSpotlightCarousel(
     isTablet: Boolean,
     onCardClick: (KpiDetails) -> Unit
 ) {
-    val pagerState = rememberPagerState(pageCount = { cards.size })
+    val listState = rememberLazyListState()
+    val dotAlpha = remember { Animatable(1f) }
+    val density = LocalDensity.current.density
+
+    LaunchedEffect(listState.isScrollInProgress) {
+        if (!listState.isScrollInProgress) {
+            delay(1500)
+            dotAlpha.animateTo(0f, tween(400))
+        } else {
+            dotAlpha.snapTo(1f)
+        }
+    }
+
+    val currentIndex by remember {
+        derivedStateOf {
+            val info = listState.layoutInfo
+            val visible = info.visibleItemsInfo
+            if (visible.isEmpty()) 0
+            else {
+                val center = (info.viewportStartOffset + info.viewportEndOffset) / 2
+                visible.minByOrNull { kotlin.math.abs(it.offset + it.size / 2 - center) }?.index ?: 0
+            }
+        }
+    }
+
+    val cardWidthDp = if (isTablet) 320.dp else 260.dp
 
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        val density = LocalDensity.current.density
-        HorizontalPager(
-            state = pagerState,
+        LazyRow(
+            state = listState,
             modifier = Modifier.fillMaxWidth(),
             contentPadding = PaddingValues(horizontal = if (isTablet) 56.dp else 40.dp),
-            pageSpacing = 16.dp
-        ) { page ->
-            val card = cards[page]
-            val pageOffset = (pagerState.currentPage - page) + pagerState.currentPageOffsetFraction
-            val absOffset = kotlin.math.abs(pageOffset)
-            val scale = 1f - (absOffset * 0.15f).coerceAtMost(0.2f)
-            val alphaVal = 1f - (absOffset * 0.5f).coerceAtMost(0.6f)
-            val rotationY = pageOffset * -8f
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            itemsIndexed(cards) { index, card ->
+                val absOffset = kotlin.math.abs(
+                    (listState.layoutInfo.visibleItemsInfo.firstOrNull { it.index == index }?.offset ?: 0) -
+                        (listState.layoutInfo.viewportStartOffset + listState.layoutInfo.viewportEndOffset) / 2
+                ).toFloat()
+                val normalizedOffset = (absOffset / (cardWidthDp.value * density)).coerceIn(0f, 2f)
+                val scale = 1f - (normalizedOffset * 0.15f).coerceAtMost(0.2f)
+                val alphaVal = 1f - (normalizedOffset * 0.5f).coerceAtMost(0.6f)
+                val rotationY = normalizedOffset * -8f
 
-            KpiPremiumCard(
-                details = card,
-                modifier = Modifier
-                    .graphicsLayer {
-                        this.scaleX = scale
-                        this.scaleY = scale
-                        this.alpha = alphaVal
-                        this.rotationY = rotationY
-                        this.cameraDistance = 12f * density
-                    },
-                isTablet = isTablet,
-                onClick = { onCardClick(card) }
-            )
+                KpiPremiumCard(
+                    details = card,
+                    modifier = Modifier
+                        .width(cardWidthDp)
+                        .graphicsLayer {
+                            this.scaleX = scale
+                            this.scaleY = scale
+                            this.alpha = alphaVal
+                            this.rotationY = rotationY
+                            this.cameraDistance = 12f * density
+                        },
+                    isTablet = isTablet,
+                    onClick = { onCardClick(card) }
+                )
+            }
         }
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .graphicsLayer { alpha = dotAlpha.value },
             horizontalArrangement = Arrangement.Center
         ) {
             repeat(cards.size) { index ->
-                val isActive = index == pagerState.currentPage
+                val isActive = index == currentIndex
                 Box(
                     modifier = Modifier
                         .padding(horizontal = 3.dp)
@@ -1140,24 +1224,23 @@ private fun KpiPremiumCard(
             .fillMaxWidth()
             .height(if (isTablet) 140.dp else 120.dp)
             .shadow(
-                elevation = 6.dp,
-                shape = RoundedCornerShape(20.dp),
+                elevation = 2.dp,
+                shape = RoundedCornerShape(16.dp),
                 clip = false
             )
             .premiumClickable(onClick = onClick),
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = AppColors.cardBg),
-        border = BorderStroke(1.dp, details.highlight.copy(alpha = 0.15f))
+        border = BorderStroke(1.dp, details.highlight.copy(alpha = 0.12f))
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
-            // Subtle gradient accent
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(
                         Brush.linearGradient(
                             colors = listOf(
-                                details.highlight.copy(alpha = 0.06f),
+                                details.highlight.copy(alpha = 0.04f),
                                 Color.Transparent
                             ),
                             start = Offset(0f, 0f),
@@ -1196,7 +1279,6 @@ private fun KpiPremiumCard(
                     }
                 }
             }
-            // Accent indicator bar at top
             Box(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
@@ -1210,7 +1292,19 @@ private fun KpiPremiumCard(
 
 // =================== KPI ANALYTICS POPUP ===================
 
-@OptIn(ExperimentalLayoutApi::class)
+private fun kpiGenericTitle(title: String): String = when {
+    title.contains("Sales", ignoreCase = true) -> "Sales"
+    title.contains("Purchases", ignoreCase = true) -> "Purchases"
+    title.contains("Net Profit", ignoreCase = true) -> "Net Profit"
+    title.contains("Receivables", ignoreCase = true) -> "Receivables"
+    title.contains("Payables", ignoreCase = true) -> "Payables"
+    title.contains("Cash", ignoreCase = true) -> "Cash Flow"
+    title.contains("Bank", ignoreCase = true) -> "Bank Flow"
+    title.contains("Inventory", ignoreCase = true) -> "Inventory"
+    title.contains("GST", ignoreCase = true) -> "GST"
+    else -> title
+}
+
 @Composable
 private fun KpiAnalyticsPopup(
     card: KpiDetails,
@@ -1239,12 +1333,14 @@ private fun KpiAnalyticsPopup(
         else -> "Performance is stable"
     }
 
+    var showFilterMenu by remember { mutableStateOf(false) }
+    val genericTitle = remember(card.title) { kpiGenericTitle(card.title) }
+
     val animProgress = remember { Animatable(0f) }
     LaunchedEffect(Unit) {
         animProgress.animateTo(1f, animationSpec = tween(600, easing = FastOutSlowInEasing))
     }
 
-    // Backdrop
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -1272,14 +1368,13 @@ private fun KpiAnalyticsPopup(
                     .padding(20.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // Header
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
-                        Text(card.title, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = AppColors.textPrimary)
+                        Text(genericTitle, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = AppColors.textPrimary)
                         Text("Business insight", fontSize = 12.sp, color = AppColors.textTertiary)
                     }
                     IconButton(onClick = onDismiss) {
@@ -1287,14 +1382,41 @@ private fun KpiAnalyticsPopup(
                     }
                 }
 
-                // Summary Card
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(containerColor = AppColors.screenBg),
                     shape = RoundedCornerShape(16.dp)
                 ) {
                     Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text(Utils.formatIndianCurrency(currentValue), fontSize = 28.sp, fontWeight = FontWeight.Bold, color = AppColors.textPrimary)
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(Utils.formatIndianCurrency(currentValue), fontSize = 28.sp, fontWeight = FontWeight.Bold, color = AppColors.textPrimary)
+                            Box {
+                                IconButton(onClick = { showFilterMenu = true }, modifier = Modifier.size(32.dp)) {
+                                    Icon(Icons.Default.FilterList, contentDescription = "Filter", tint = AppColors.textSecondary, modifier = Modifier.size(18.dp))
+                                }
+                                DropdownMenu(expanded = showFilterMenu, onDismissRequest = { showFilterMenu = false }) {
+                                    AnalyticsFilter.entries.forEach { filter ->
+                                        DropdownMenuItem(
+                                            text = {
+                                                Text(
+                                                    filter.label,
+                                                    fontSize = 12.sp,
+                                                    color = if (analyticsFilter == filter) AppColors.primary else AppColors.textPrimary
+                                                )
+                                            },
+                                            onClick = {
+                                                onFilterChange(filter)
+                                                showFilterMenu = false
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+                        }
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                             Box(
                                 modifier = Modifier
@@ -1312,18 +1434,18 @@ private fun KpiAnalyticsPopup(
                                 )
                             }
                             Text("growth", fontSize = 12.sp, color = AppColors.textTertiary)
+                            Spacer(modifier = Modifier.weight(1f))
+                            Text(analyticsFilter.label, fontSize = 11.sp, color = AppColors.textTertiary)
                         }
                     }
                 }
 
-                // Chart Area
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(containerColor = AppColors.screenBg),
                     shape = RoundedCornerShape(16.dp)
                 ) {
                     Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        // Checkered background chart
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -1331,7 +1453,6 @@ private fun KpiAnalyticsPopup(
                                 .clip(RoundedCornerShape(12.dp))
                         ) {
                             Canvas(modifier = Modifier.fillMaxSize()) {
-                                // Checkered background
                                 val tileSize = 20f
                                 for (x in 0..size.width.toInt() step tileSize.toInt()) {
                                     for (y in 0..size.height.toInt() step tileSize.toInt()) {
@@ -1350,7 +1471,6 @@ private fun KpiAnalyticsPopup(
                                     val chartWidth = size.width - padding * 2
                                     val chartHeight = size.height - padding * 2
 
-                                    // Grid lines
                                     for (i in 0..4) {
                                         val y = padding + i * (chartHeight / 4f)
                                         drawLine(Color(0xFFE5E7EB), Offset(padding, y), Offset(size.width - padding, y), 1f)
@@ -1363,7 +1483,6 @@ private fun KpiAnalyticsPopup(
                                                 val y = padding + chartHeight - (value / maxValue * chartHeight).toFloat()
                                                 Offset(x, y)
                                             }
-                                            // Area fill
                                             if (points.size >= 2) {
                                                 val path = androidx.compose.ui.graphics.Path().apply {
                                                     moveTo(points.first().x, size.height - padding)
@@ -1402,7 +1521,6 @@ private fun KpiAnalyticsPopup(
                                             }
                                         }
                                         ChartType.PIE -> {
-                                            // Pie chart
                                             val total = analyticsSeries.sum().coerceAtLeast(1.0)
                                             val centerX = size.width / 2f
                                             val centerY = size.height / 2f
@@ -1429,13 +1547,11 @@ private fun KpiAnalyticsPopup(
                                                 startAngle += sweep
                                             }
                                         }
-                                        else -> {}
                                     }
                                 }
                             }
                         }
 
-                        // Statistics
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                             AnalyticsStat("Highest", Utils.formatIndianCurrency(highestValue))
                             AnalyticsStat("Lowest", Utils.formatIndianCurrency(lowestValue))
@@ -1445,26 +1561,6 @@ private fun KpiAnalyticsPopup(
                     }
                 }
 
-                // Filter Chips (replacing bottom chips)
-                Text("Time Range", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = AppColors.textSecondary)
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    AnalyticsFilter.entries.forEach { filter ->
-                        FilterChip(
-                            selected = analyticsFilter == filter,
-                            onClick = { onFilterChange(filter) },
-                            label = { Text(filter.label, fontSize = 11.sp) },
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = AppColors.primary.copy(alpha = 0.12f),
-                                selectedLabelColor = AppColors.primary
-                            )
-                        )
-                    }
-                }
-
-                // Chart Type Selector
                 Text("Chart Type", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = AppColors.textSecondary)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     ChartType.entries.forEach { type ->
@@ -1475,7 +1571,7 @@ private fun KpiAnalyticsPopup(
                                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                                     Icon(
                                         imageVector = when (type) {
-                                            ChartType.LINE -> Icons.Default.ShowChart
+                                            ChartType.LINE -> Icons.AutoMirrored.Filled.ShowChart
                                             ChartType.BAR -> Icons.Default.BarChart
                                             ChartType.PIE -> Icons.Default.PieChart
                                         },
@@ -1578,7 +1674,7 @@ private fun computeAnalyticsSeries(
                 }.timeInMillis
             }
         )
-        AnalyticsFilter.CUSTOM -> Triple(6,
+        AnalyticsFilter.CUSTOM_DATE, AnalyticsFilter.CUSTOM_DATE_RANGE -> Triple(6,
             { i: Int ->
                 Calendar.getInstance().apply {
                     add(Calendar.MONTH, -i)
