@@ -1767,7 +1767,7 @@ fun SettingsMenuSection(
 
         SettingsMenuCard(
             title = "Customize",
-            description = "Enable progress tracker and future customization controls",
+            description = "KPI animation mode, progress tracker, and dashboard options",
             icon = Icons.Default.CheckCircle,
             onClick = { onSelect("CUSTOMIZE") }
         )
@@ -1880,12 +1880,14 @@ fun ProgressTrackerSettingsScreen(onBackToMenu: () -> Unit) {
     var metric by remember { mutableStateOf("Sales") }
     var period by remember { mutableStateOf("Monthly") }
     var target by remember { mutableStateOf("200000") }
+    var kpiAnimationMode by remember { mutableStateOf("WALLET_STACK") }
 
     LaunchedEffect(Unit) {
         enabled = AppPreferences.isProgressTrackerEnabled(context)
         metric = AppPreferences.getProgressTrackerMetric(context)
         period = AppPreferences.getProgressTrackerPeriod(context)
         target = AppPreferences.getProgressTrackerTarget(context)
+        kpiAnimationMode = AppPreferences.getKpiAnimationMode(context)
     }
 
     Scaffold(
@@ -1916,14 +1918,51 @@ fun ProgressTrackerSettingsScreen(onBackToMenu: () -> Unit) {
                 colors = CardDefaults.cardColors(containerColor = AppColors.cardBg)
             ) {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text("Progress Tracker", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = AppColors.textPrimary)
-                    Text("Enable a compact progress tracker on the dashboard and keep it connected to live accounting data.", fontSize = 12.sp, color = AppColors.textSecondary)
+                    Text("Dashboard", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = AppColors.textPrimary)
+                    Text("Configure dashboard appearance and KPI card animation style.", fontSize = 12.sp, color = AppColors.textSecondary)
+
+                    Text("KPI Animation Mode", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = AppColors.textSecondary)
+                    val animationModes = listOf(
+                        "STANDARD_HORIZONTAL" to "Standard Horizontal",
+                        "WALLET_STACK" to "Wallet Stack (Default)",
+                        "SPOTLIGHT_CAROUSEL" to "Spotlight Carousel"
+                    )
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        animationModes.forEach { (mode, label) ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .border(
+                                        1.dp,
+                                        if (kpiAnimationMode == mode) AppColors.primary else AppColors.border,
+                                        RoundedCornerShape(10.dp)
+                                    )
+                                    .clickable {
+                                        kpiAnimationMode = mode
+                                        scope.launch { AppPreferences.setKpiAnimationMode(context, mode) }
+                                    }
+                                    .padding(12.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(label, fontSize = 13.sp, color = AppColors.textPrimary, fontWeight = if (kpiAnimationMode == mode) FontWeight.Bold else FontWeight.Normal)
+                                if (kpiAnimationMode == mode) {
+                                    Icon(Icons.Default.Check, contentDescription = "Selected", tint = AppColors.primary, modifier = Modifier.size(18.dp))
+                                }
+                            }
+                        }
+                    }
+
+                    HorizontalDivider()
+
+                    Text("Progress Tracker", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = AppColors.textPrimary)
+                    Text("Show a progress tracker on the dashboard connected to live accounting data.", fontSize = 12.sp, color = AppColors.textSecondary)
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("Enable / Disable", fontWeight = FontWeight.Medium, color = AppColors.textPrimary)
+                        Text("Show Progress Tracker", fontWeight = FontWeight.Medium, color = AppColors.textPrimary)
                         Switch(
                             checked = enabled,
                             onCheckedChange = {
@@ -1961,7 +2000,8 @@ fun ProgressTrackerSettingsScreen(onBackToMenu: () -> Unit) {
                                 AppPreferences.setProgressTrackerMetric(context, metric.ifBlank { "Sales" })
                                 AppPreferences.setProgressTrackerPeriod(context, period.ifBlank { "Monthly" })
                                 AppPreferences.setProgressTrackerTarget(context, target.ifBlank { "200000" })
-                                Toast.makeText(context, "Progress tracker settings saved", Toast.LENGTH_SHORT).show()
+                                AppPreferences.setKpiAnimationMode(context, kpiAnimationMode)
+                                Toast.makeText(context, "Dashboard settings saved", Toast.LENGTH_SHORT).show()
                             }
                         },
                         shape = RoundedCornerShape(10.dp),
@@ -1969,16 +2009,6 @@ fun ProgressTrackerSettingsScreen(onBackToMenu: () -> Unit) {
                     ) {
                         Text("Save")
                     }
-                }
-            }
-
-            Card(
-                modifier = Modifier.fillMaxWidth().border(1.dp, AppColors.border, RoundedCornerShape(16.dp)).premiumClickable { },
-                colors = CardDefaults.cardColors(containerColor = AppColors.cardBg)
-            ) {
-                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text("Other Settings", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = AppColors.textPrimary)
-                    Text("Future customization options will be added here without changing the current production structure.", fontSize = 12.sp, color = AppColors.textSecondary)
                 }
             }
         }
