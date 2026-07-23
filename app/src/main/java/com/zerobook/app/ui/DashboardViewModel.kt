@@ -5,6 +5,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.zerobook.app.data.AppDatabase
 import com.zerobook.app.data.AppRepository
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
@@ -19,6 +20,8 @@ data class DashboardHeaderState(
 class DashboardViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = AppRepository(AppDatabase.getDatabase(application))
 
+
+    val kpiAnimationMode: StateFlow<String> = MutableStateFlow("STANDARD_HORIZONTAL")
     val kpiAnimationMode: StateFlow<String> = kotlinx.coroutines.flow.MutableStateFlow("STANDARD_HORIZONTAL")
 
     val headerState: StateFlow<DashboardHeaderState> = repository.profile

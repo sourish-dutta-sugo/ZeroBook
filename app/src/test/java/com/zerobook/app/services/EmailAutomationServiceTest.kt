@@ -8,7 +8,9 @@ class EmailAutomationServiceTest {
     @Test
     fun rendersTemplateWithPartyAndInvoicePlaceholders() {
         val rendered = EmailAutomationService.renderTemplate(
+            template = "Hello {{customer_name}}, invoice {{invoice_number}} of amount {{amount}} due {{due_date}}.",
             template = "Hello {{customer_name}}, invoice {{invoice_number}} of {{amount}} due {{due_date}}.",
+
             customerName = "Asha",
             invoiceNumber = "INV-1001",
             amount = "₹5000",
