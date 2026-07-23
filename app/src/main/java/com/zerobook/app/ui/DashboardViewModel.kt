@@ -20,7 +20,9 @@ data class DashboardHeaderState(
 class DashboardViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = AppRepository(AppDatabase.getDatabase(application))
 
+
     val kpiAnimationMode: StateFlow<String> = MutableStateFlow("STANDARD_HORIZONTAL")
+    val kpiAnimationMode: StateFlow<String> = kotlinx.coroutines.flow.MutableStateFlow("STANDARD_HORIZONTAL")
 
     val headerState: StateFlow<DashboardHeaderState> = repository.profile
         .map { profile ->
