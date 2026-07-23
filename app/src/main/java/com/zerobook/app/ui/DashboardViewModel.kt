@@ -19,6 +19,13 @@ data class DashboardHeaderState(
 class DashboardViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = AppRepository(AppDatabase.getDatabase(application))
 
+    val kpiAnimationMode: StateFlow<String> = com.zerobook.app.data.AppPreferences.kpiAnimationModeFlow(application)
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = "WALLET_STACK"
+        )
+
     val headerState: StateFlow<DashboardHeaderState> = repository.profile
         .map { profile ->
             DashboardHeaderState(

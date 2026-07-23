@@ -7,6 +7,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import java.time.LocalDate
 
 private val Context.dataStore by preferencesDataStore(name = "zerobook_prefs")
@@ -18,6 +19,21 @@ object AppPreferences {
     private val progressTrackerMetricKey = stringPreferencesKey("progress_tracker_metric")
     private val progressTrackerPeriodKey = stringPreferencesKey("progress_tracker_period")
     private val progressTrackerTargetKey = stringPreferencesKey("progress_tracker_target")
+    private val kpiAnimationModeKey = stringPreferencesKey("kpi_animation_mode")
+
+    suspend fun getKpiAnimationMode(context: Context): String =
+        context.dataStore.data.first()[kpiAnimationModeKey] ?: "WALLET_STACK"
+
+    suspend fun setKpiAnimationMode(context: Context, mode: String) {
+        context.dataStore.edit { prefs ->
+            prefs[kpiAnimationModeKey] = mode
+        }
+    }
+
+    fun kpiAnimationModeFlow(context: Context): kotlinx.coroutines.flow.Flow<String> =
+        context.dataStore.data.map { prefs ->
+            prefs[kpiAnimationModeKey] ?: "WALLET_STACK"
+        }
 
     suspend fun getFyLastCheckedDate(context: Context): LocalDate? =
         context.dataStore.data.first()[fyLastCheckedDateKey]?.let(LocalDate::parse)
