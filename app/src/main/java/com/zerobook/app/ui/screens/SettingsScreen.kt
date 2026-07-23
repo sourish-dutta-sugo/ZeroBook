@@ -1880,12 +1880,14 @@ fun ProgressTrackerSettingsScreen(onBackToMenu: () -> Unit) {
     var metric by remember { mutableStateOf("Sales") }
     var period by remember { mutableStateOf("Monthly") }
     var target by remember { mutableStateOf("200000") }
+    var kpiMode by remember { mutableStateOf("WALLET_STACK") }
 
     LaunchedEffect(Unit) {
         enabled = AppPreferences.isProgressTrackerEnabled(context)
         metric = AppPreferences.getProgressTrackerMetric(context)
         period = AppPreferences.getProgressTrackerPeriod(context)
         target = AppPreferences.getProgressTrackerTarget(context)
+        kpiMode = AppPreferences.getKpiAnimationMode(context)
     }
 
     Scaffold(
@@ -1973,12 +1975,38 @@ fun ProgressTrackerSettingsScreen(onBackToMenu: () -> Unit) {
             }
 
             Card(
-                modifier = Modifier.fillMaxWidth().border(1.dp, AppColors.border, RoundedCornerShape(16.dp)).premiumClickable { },
+                modifier = Modifier.fillMaxWidth().border(1.dp, AppColors.border, RoundedCornerShape(16.dp)),
                 colors = CardDefaults.cardColors(containerColor = AppColors.cardBg)
             ) {
-                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text("Other Settings", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = AppColors.textPrimary)
-                    Text("Future customization options will be added here without changing the current production structure.", fontSize = 12.sp, color = AppColors.textSecondary)
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text("KPI Card Animation Style", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = AppColors.textPrimary)
+                    Text("Choose the presentation style for the top dashboard KPI cards carousel.", fontSize = 12.sp, color = AppColors.textSecondary)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        listOf(
+                            "WALLET_STACK" to "Wallet",
+                            "STANDARD_HORIZONTAL" to "Horizontal",
+                            "SPOTLIGHT_CAROUSEL" to "Carousel"
+                        ).forEach { (value, label) ->
+                            FilterChip(
+                                selected = kpiMode == value,
+                                onClick = {
+                                    kpiMode = value
+                                    scope.launch {
+                                        AppPreferences.setKpiAnimationMode(context, value)
+                                    }
+                                    Toast.makeText(context, "KPI transition updated to $label", Toast.LENGTH_SHORT).show()
+                                },
+                                label = { Text(label) },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = AppColors.primary.copy(alpha = 0.12f),
+                                    selectedLabelColor = AppColors.primary
+                                )
+                            )
+                        }
+                    }
                 }
             }
         }
