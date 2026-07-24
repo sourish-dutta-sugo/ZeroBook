@@ -1,13 +1,11 @@
-<?xml version="1.0" encoding="utf-8"?><!--
-   Sample backup rules file; uncomment and customize as necessary.
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+   Harkened backup rules for ZeroBook to prevent database and credential leakage.
    See https://developer.android.com/guide/topics/data/autobackup
-   for details.
-   Note: This file is ignored for devices older than API 31
-   See https://developer.android.com/about/versions/12/backup-restore
 -->
 <full-backup-content>
-    <!--
-   <include domain="sharedpref" path="."/>
-   <exclude domain="sharedpref" path="device.xml"/>
--->
+    <!-- Exclude database containing PII, financial history, and credentials -->
+    <exclude domain="database" path="ZeroBook.db"/>
+    <exclude domain="database" path="ZeroBook.db-shm"/>
+    <exclude domain="database" path="ZeroBook.db-wal"/>
 </full-backup-content>

@@ -160,33 +160,45 @@ object HsnLookup {
             }
     }
 
+    /**
+     * Bolt Optimization ⚡: Optimized suggest lookup to use a single-pass O(N) loop.
+     * - Avoids Sequence/Map/Filter/Sorting allocations (e.g., intermediate Pair objects, Sequence wrappers,
+     *   iterator instances, and sorted copy arrays/lists), resulting in zero extra garbage per keystroke lookup.
+     * - Implements an O(1) early exit if an exact match (score 0) is found during iteration.
+     */
     fun suggest(keyword: String, products: List<Product>): HsnResult? {
         val query = keyword.trim()
         if (query.length < 2) return null
 
         val normalizedQuery = query.lowercase()
-        val localProductMatch = products
-            .asSequence()
-            .filter { it.hsnCode.isNotBlank() }
-            .map { product ->
-                val normalizedName = product.name.trim().lowercase()
-                val score = when {
-                    normalizedName == normalizedQuery -> 0
-                    normalizedName.startsWith(normalizedQuery) -> 1
-                    normalizedQuery in normalizedName -> 2
-                    else -> 3
-                }
-                score to product
-            }
-            .filter { it.first < 3 }
-            .sortedBy { it.first }
-            .firstOrNull()
-            ?.second
+        var bestProduct: Product? = null
+        var bestScore = 3 // We only care about scores 0, 1, 2
 
-        if (localProductMatch != null) {
+        for (i in 0 until products.size) {
+            val product = products[i]
+            if (product.hsnCode.isBlank()) continue
+
+            val normalizedName = product.name.trim().lowercase()
+            val score = when {
+                normalizedName == normalizedQuery -> 0
+                normalizedName.startsWith(normalizedQuery) -> 1
+                normalizedQuery in normalizedName -> 2
+                else -> 3
+            }
+
+            if (score < bestScore) {
+                bestScore = score
+                bestProduct = product
+                if (bestScore == 0) {
+                    break // Bolt Early-Exit ⚡: Found exact match, no need to iterate further
+                }
+            }
+        }
+
+        if (bestProduct != null) {
             return HsnResult(
-                hsnCode = localProductMatch.hsnCode,
-                description = localProductMatch.name
+                hsnCode = bestProduct.hsnCode,
+                description = bestProduct.name
             )
         }
 
