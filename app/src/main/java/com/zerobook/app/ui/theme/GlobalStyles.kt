@@ -1,5 +1,4 @@
 package com.zerobook.app.ui.theme
-import com.zerobook.app.ui.theme.AppColors
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -15,39 +14,39 @@ import androidx.compose.ui.unit.sp
 
 object GlobalStyles {
     val inputModifier = Modifier
-        .background(AppColors.inputBg, RoundedCornerShape(8.dp))
-        .border(1.dp, Colors.inputBorder, RoundedCornerShape(8.dp))
-        .padding(horizontal = 12.dp, vertical = 12.dp)
+        .background(AppColors.inputBg, RoundedCornerShape(12.dp))
+        .border(0.5.dp, AppColors.inputBorder, RoundedCornerShape(12.dp))
+        .padding(horizontal = 14.dp, vertical = 14.dp)
 
     val labelTextStyle = TextStyle(
         color = AppColors.labelText,
-        fontSize = 13.sp,
-        fontWeight = FontWeight.Medium
+        fontSize = 12.sp,
+        fontWeight = FontWeight.SemiBold
     )
 
     val cardModifier = Modifier
-        .clip(RoundedCornerShape(12.dp))
+        .clip(RoundedCornerShape(14.dp))
         .background(AppColors.cardBg)
-        .border(1.dp, AppColors.border, RoundedCornerShape(12.dp))
+        .border(0.5.dp, AppColors.border, RoundedCornerShape(14.dp))
         .padding(16.dp)
 
     val screenBackgroundModifier = Modifier
         .background(AppColors.screenBg)
 
     val sectionTitleTextStyle = TextStyle(
-        fontSize = 18.sp,
-        fontWeight = FontWeight.Bold,
+        fontSize = 15.sp,
+        fontWeight = FontWeight.SemiBold,
         color = AppColors.textPrimary
     )
 
     val buttonModifier = Modifier
-        .clip(RoundedCornerShape(8.dp))
+        .clip(RoundedCornerShape(14.dp))
         .background(AppColors.primary)
-        .padding(vertical = 14.dp)
+        .padding(vertical = 15.dp)
 
     val buttonTextStyle = TextStyle(
         color = AppColors.textOnPrimary,
-        fontSize = 16.sp,
+        fontSize = 15.sp,
         fontWeight = FontWeight.SemiBold
     )
 

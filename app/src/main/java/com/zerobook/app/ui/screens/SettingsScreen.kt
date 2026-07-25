@@ -1734,139 +1734,225 @@ fun SettingsMenuSection(
     navigateToLedgerBooks: () -> Unit
 ) {
     val scrollState = rememberScrollState()
+    val profile by viewModel.profile.collectAsState()
+    val vouchers by viewModel.vouchers.collectAsState()
+    val parties by viewModel.parties.collectAsState()
+
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(AppColors.screenBg)
             .verticalScroll(scrollState)
             .imePadding()
-            .padding(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 80.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+            .padding(bottom = 80.dp),
+        verticalArrangement = Arrangement.spacedBy(0.dp)
     ) {
-        // Menu items
-        SettingsMenuCard(
-            title = "Edit Business Profile",
-            description = "Update GSTIN, Address, PAN, signature, and bank details",
-            icon = Icons.Default.Business,
-            onClick = { onSelect("BUSINESS") }
-        )
-
-        SettingsMenuCard(
-            title = "Manage Products Master",
-            description = "Configure stock prices, units, and standard HSN codes",
-            icon = Icons.Default.ShoppingBag,
-            onClick = navigateToProducts
-        )
-
-        SettingsMenuCard(
-                            title = "Ledger Books & Account Heads",
-                            description = "View full ledger account list with balances and groups",
-                            icon = Icons.Default.AccountBalance,
-                            onClick = navigateToLedgerBooks
-                        )
-
-        SettingsMenuCard(
-            title = "Customize",
-            description = "KPI animation mode, progress tracker, and dashboard options",
-            icon = Icons.Default.CheckCircle,
-            onClick = { onSelect("CUSTOMIZE") }
-        )
-
-        SettingsMenuCard(
-            title = "Theme & Colors",
-            description = "Switch between Beach, Blue, Green, Purple, and Dark",
-            icon = Icons.Default.CheckCircle,
-            onClick = { onSelect("THEME") }
-        )
-
-        SettingsMenuCard(
-            title = "Financial Year Control",
-            description = "Configure custom financial year with auto-save and validations",
-            icon = Icons.Default.DateRange,
-            onClick = { onSelect("FY") }
-        )
-
-        SettingsMenuCard(
-            title = "Change Log",
-            description = "Read what changed in each ZeroBook release",
-            icon = Icons.Default.Info,
-            onClick = openChangeLog
-        )
-
-        SettingsMenuCard(
-            title = "About ZeroBook",
-            description = "Check compliance versions and regulatory details",
-            icon = Icons.Default.Info,
-            onClick = { onSelect("ABOUT") }
-        )
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        // Backup Section Card
-        Card(
+        // Profile Hero Section
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .border(1.dp, AppColors.border, RoundedCornerShape(12.dp)),
-            colors = CardDefaults.cardColors(containerColor = AppColors.cardBg)
+                .background(Color(0xFF1A5C4B))
+                .padding(horizontal = 20.dp, vertical = 32.dp),
+            contentAlignment = Alignment.Center
         ) {
-            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("BACKUP & RESTORE DATA", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = AppColors.textSecondary)
-                Text(
-                    "Export your complete SQLite database file directly as an encrypted local backup to safe-keep transaction ledgers.",
-                    fontSize = 11.sp,
-                    color = AppColors.textSecondary
-                )
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                // Avatar
+                Box(
+                    modifier = Modifier
+                        .size(72.dp)
+                        .background(Color(0xFFC8943A), RoundedCornerShape(20.dp))
+                        .border(3.dp, Color(0x4DFFFFFF), RoundedCornerShape(20.dp)),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Button(
-                        onClick = {
-                            exportCsv()
-                        },
-                        shape = RoundedCornerShape(8.dp),
-                        modifier = Modifier
-                            .weight(1f)
-                            .pressScale(),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = AppColors.primary,
-                            contentColor = AppColors.textOnPrimary
-                        )
-                    ) {
-                        Text("Export to CSV", fontSize = 11.sp)
-                    }
-                    OutlinedButton(
-                        onClick = { importCsv() },
-                        shape = RoundedCornerShape(8.dp),
-                        modifier = Modifier
-                            .weight(1f)
-                            .pressScale()
-                    ) {
-                        Text("Import CSV", fontSize = 11.sp)
-                    }
+                    Text(
+                        text = profile?.businessName?.take(2)?.uppercase() ?: "ZB",
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
                 }
+                Text(
+                    text = profile?.businessName?.ifBlank { "Business Profile" } ?: "Business Profile",
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
+                Text(
+                    text = if (profile?.gstin.isNullOrBlank()) "Non-GST" else "GSTIN: ${profile?.gstin}",
+                    fontSize = 12.sp,
+                    color = Color(0xFF9CA3AF)
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Stats row
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    OutlinedButton(
-                        onClick = {
-                            val result = viewModel.backupDatabase(context)
-                            if (result != null) {
-                                Toast.makeText(context, "Backup saved to ${result.locationLabel}", Toast.LENGTH_LONG).show()
-                            } else {
-                                Toast.makeText(context, "Backup failed", Toast.LENGTH_LONG).show()
-                            }
-                        },
-                        shape = RoundedCornerShape(8.dp),
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = "FY ${viewModel.financialYear.collectAsState().value}",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                        Text(
+                            text = "Active year",
+                            fontSize = 10.sp,
+                            color = Color(0xFF9CA3AF)
+                        )
+                    }
+                    Box(
                         modifier = Modifier
-                            .weight(1f)
-                            .pressScale()
-                    ) {
-                        Text("Backup Database", fontSize = 11.sp)
+                            .width(1.dp)
+                            .height(28.dp)
+                            .background(Color(0x33FFFFFF))
+                    )
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = "${vouchers.size}",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                        Text(
+                            text = "Vouchers",
+                            fontSize = 10.sp,
+                            color = Color(0xFF9CA3AF)
+                        )
+                    }
+                    Box(
+                        modifier = Modifier
+                            .width(1.dp)
+                            .height(28.dp)
+                            .background(Color(0x33FFFFFF))
+                    )
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = "${parties.size}",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                        Text(
+                            text = "Parties",
+                            fontSize = 10.sp,
+                            color = Color(0xFF9CA3AF)
+                        )
                     }
                 }
             }
+        }
+
+        // Menu items section
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(AppColors.screenBg)
+                .padding(start = 16.dp, top = 20.dp, end = 16.dp, bottom = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text(
+                "Business",
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                color = AppColors.textTertiary,
+                letterSpacing = 1.sp
+            )
+
+            SettingsMenuCard(
+                title = "Business Profile",
+                description = "Update GSTIN, Address, PAN, signature, and bank details",
+                icon = Icons.Default.Business,
+                onClick = { onSelect("BUSINESS") }
+            )
+
+            SettingsMenuCard(
+                title = "Products",
+                description = "Configure stock prices, units, and standard HSN codes",
+                icon = Icons.Default.ShoppingBag,
+                onClick = navigateToProducts
+            )
+
+            SettingsMenuCard(
+                title = "Ledger Books",
+                description = "View full ledger account list with balances and groups",
+                icon = Icons.Default.AccountBalance,
+                onClick = navigateToLedgerBooks
+            )
+
+            SettingsMenuCard(
+                title = "Financial Year",
+                description = "Configure custom financial year with auto-save and validations",
+                icon = Icons.Default.DateRange,
+                onClick = { onSelect("FY") }
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                "Preferences",
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                color = AppColors.textTertiary,
+                letterSpacing = 1.sp
+            )
+
+            SettingsMenuCard(
+                title = "Appearance & Theme",
+                description = "Switch between Beach, Blue, Green, Purple, and Dark",
+                icon = Icons.Default.CheckCircle,
+                onClick = { onSelect("THEME") }
+            )
+
+            SettingsMenuCard(
+                title = "Dashboard Options",
+                description = "KPI animation mode, progress tracker, and dashboard options",
+                icon = Icons.Default.CheckCircle,
+                onClick = { onSelect("CUSTOMIZE") }
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                "Data",
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                color = AppColors.textTertiary,
+                letterSpacing = 1.sp
+            )
+
+            SettingsMenuCard(
+                title = "Export Data (CSV)",
+                description = "Export your complete SQLite database as CSV backup",
+                icon = Icons.Default.Info,
+                onClick = exportCsv
+            )
+
+            SettingsMenuCard(
+                title = "Import Data (CSV)",
+                description = "Import CSV files to restore transaction data",
+                icon = Icons.Default.Info,
+                onClick = importCsv
+            )
+
+            SettingsMenuCard(
+                title = "Change Log",
+                description = "Read what changed in each ZeroBook release",
+                icon = Icons.Default.Info,
+                onClick = openChangeLog
+            )
+
+            SettingsMenuCard(
+                title = "About ZeroBook",
+                description = "Check compliance versions and regulatory details",
+                icon = Icons.Default.Info,
+                onClick = { onSelect("ABOUT") }
+            )
         }
     }
 }

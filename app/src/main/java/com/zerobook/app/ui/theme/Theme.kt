@@ -17,7 +17,9 @@ fun ZeroBookTheme(
         surface = appTheme.backgroundSecondary,
         outline = AppColors.border,
         onBackground = appTheme.textPrimary,
-        onSurface = appTheme.textPrimary
+        onSurface = appTheme.textPrimary,
+        surfaceVariant = appTheme.backgroundTertiary,
+        onSurfaceVariant = appTheme.textSecondary
     )
 
     MaterialTheme(

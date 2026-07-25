@@ -20,12 +20,22 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.filled.Receipt
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.ui.draw.shadow
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Assignment
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Settings
@@ -199,12 +209,12 @@ fun MainAppEntry(
                 contentAlignment = Alignment.Center
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    CircularProgressIndicator(color = Color(0xFF1A73E8))
+                    CircularProgressIndicator(color = AppColors.primary)
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
                         text = "Initializing Secure Database...",
                         fontSize = 14.sp,
-                        color = Color(0xFF1A1A1A),
+                        color = AppColors.textPrimary,
                         fontWeight = FontWeight.Medium
                     )
                 }
@@ -232,13 +242,13 @@ fun MainAppEntry(
                             text = "Database Connection Failed",
                             fontWeight = FontWeight.Bold,
                             fontSize = 18.sp,
-                            color = Color(0xFFDC3545)
+                            color = AppColors.error
                         )
                         Spacer(modifier = Modifier.height(12.dp))
                         Text(
                             text = state.message,
                             fontSize = 14.sp,
-                            color = Color(0xFF555555),
+                            color = AppColors.textSecondary,
                             textAlign = TextAlign.Center
                         )
                         Spacer(modifier = Modifier.height(24.dp))
@@ -249,8 +259,8 @@ fun MainAppEntry(
                                     context.recreate()
                                 }
                             },
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1A73E8)),
-                            shape = RoundedCornerShape(8.dp)
+                            colors = ButtonDefaults.buttonColors(containerColor = AppColors.primary),
+                            shape = RoundedCornerShape(14.dp)
                         ) {
                             Text("Retry Connection", color = AppColors.textOnPrimary)
                         }
@@ -322,12 +332,12 @@ private fun AppContent(
                         contentAlignment = Alignment.Center
                     ) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            CircularProgressIndicator(color = Color(0xFF1A73E8))
+                            CircularProgressIndicator(color = AppColors.primary)
                             Spacer(modifier = Modifier.height(12.dp))
                             Text(
                                 text = "Preparing ZeroBook...",
                                 fontSize = 14.sp,
-                                color = Color(0xFF1A1A1A),
+                                color = AppColors.textPrimary,
                                 fontWeight = FontWeight.Medium
                             )
                         }
@@ -366,38 +376,90 @@ private fun AppContent(
                         containerColor = AppColors.screenBg,
                         bottomBar = {
                             if (isTopLevel) {
-                                NavigationBar(
-                                    containerColor = AppColors.cardBg,
-                                    tonalElevation = 6.dp,
-                                    modifier = Modifier
-                                        .navigationBarsPadding()
-                                        .height(72.dp)
-                                ) {
-                                    topLevelDestinations.forEach { destination ->
-                                        val selected = currentDestination?.hierarchy?.any { it.route == destination.route } == true
-                                        NavigationBarItem(
-                                            selected = selected,
-                                            enabled = !selected,
-                                            onClick = {
-                                                if (selected) return@NavigationBarItem
-                                                navController.navigateToTopLevel(destination.route)
-                                            },
-                                            icon = {
-                                                PremiumBottomNavContent(
-                                                    selected = selected,
-                                                    icon = destination.icon,
-                                                    label = destination.label
-                                                )
-                                            },
-                                            label = {},
-                                            alwaysShowLabel = false,
-                                            colors = NavigationBarItemDefaults.colors(
-                                                selectedIconColor = AppColors.primary,
-                                                unselectedIconColor = AppColors.textTertiary,
-                                                selectedTextColor = AppColors.primary,
-                                                unselectedTextColor = AppColors.textTertiary,
-                                                indicatorColor = AppColors.primary.copy(alpha = 0.12f)
+                                Box {
+                                    NavigationBar(
+                                        containerColor = Color.White,
+                                        tonalElevation = 0.dp,
+                                        modifier = Modifier
+                                            .navigationBarsPadding()
+                                            .height(64.dp)
+                                            .background(
+                                                Color.White,
+                                                RoundedCornerShape(topStart = 0.dp, topEnd = 0.dp)
                                             )
+                                    ) {
+                                        val destinationsWithFab = listOf(
+                                            topLevelDestinations[0],
+                                            topLevelDestinations[1],
+                                            topLevelDestinations[2],
+                                            topLevelDestinations[3]
+                                        )
+                                        destinationsWithFab.forEach { destination ->
+                                            val selected = currentDestination?.hierarchy?.any { it.route == destination.route } == true
+                                            NavigationBarItem(
+                                                selected = selected,
+                                                enabled = !selected,
+                                                onClick = {
+                                                    if (selected) return@NavigationBarItem
+                                                    navController.navigateToTopLevel(destination.route)
+                                                },
+                                                icon = {
+                                                    Box(
+                                                        modifier = Modifier
+                                                            .size(28.dp)
+                                                            .then(
+                                                                if (selected) Modifier.background(
+                                                                    AppColors.primaryLight,
+                                                                    RoundedCornerShape(10.dp)
+                                                                ) else Modifier
+                                                            ),
+                                                        contentAlignment = Alignment.Center
+                                                    ) {
+                                                        Icon(
+                                                            imageVector = destination.icon,
+                                                            contentDescription = destination.label,
+                                                            modifier = Modifier.size(20.dp),
+                                                            tint = if (selected) AppColors.primary else AppColors.textTertiary
+                                                        )
+                                                    }
+                                                },
+                                                label = {
+                                                    Text(
+                                                        text = destination.label,
+                                                        fontSize = 10.sp,
+                                                        fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
+                                                        color = if (selected) AppColors.primary else AppColors.textTertiary
+                                                    )
+                                                },
+                                                alwaysShowLabel = true,
+                                                colors = NavigationBarItemDefaults.colors(
+                                                    selectedIconColor = AppColors.primary,
+                                                    unselectedIconColor = AppColors.textTertiary,
+                                                    selectedTextColor = AppColors.primary,
+                                                    unselectedTextColor = AppColors.textTertiary,
+                                                    indicatorColor = Color.Transparent
+                                                )
+                                            )
+                                        }
+                                    }
+                                    // Center FAB
+                                    Box(
+                                        modifier = Modifier
+                                            .align(Alignment.TopCenter)
+                                            .offset(y = (-14).dp)
+                                            .size(52.dp)
+                                            .background(AppColors.primary, RoundedCornerShape(16.dp))
+                                            .shadow(6.dp, RoundedCornerShape(16.dp))
+                                            .clickable {
+                                                navController.navigate(newVoucherRoute())
+                                            },
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Add,
+                                            contentDescription = "New Voucher",
+                                            tint = Color.White,
+                                            modifier = Modifier.size(24.dp)
                                         )
                                     }
                                 }
@@ -457,13 +519,13 @@ private fun AppContent(
                                         verticalArrangement = Arrangement.spacedBy(10.dp)
                                     ) {
                                         changelogData?.changes?.forEach { change ->
-                                            Text("• $change", color = Color(0xFF111827))
+                                            Text("• $change", color = AppColors.textPrimary)
                                         }
                                     }
                                 },
                                 containerColor = Color.White,
-                                textContentColor = Color(0xFF111827),
-                                titleContentColor = Color(0xFF111827)
+                                textContentColor = AppColors.textPrimary,
+                                titleContentColor = AppColors.textPrimary
                             )
                         }
                     }
@@ -664,36 +726,36 @@ fun PinLockScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(AppColors.screenBg)
+            .background(Color(0xFF1A5C4B))
             .padding(32.dp),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
-            text = "ZeroBook Ledger Lock",
-            fontSize = 22.sp,
+            text = "Set your access PIN",
+            fontSize = 18.sp,
             fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary
+            color = Color.White
         )
         Spacer(modifier = Modifier.height(6.dp))
         Text(
-            text = "Enter 4-digit offline PIN parameters to access financial databases",
-            fontSize = 12.sp,
-            color = Color.Gray,
+            text = "Keep your books secure",
+            fontSize = 13.sp,
+            color = Color(0xFF9CA3AF),
             textAlign = TextAlign.Center
         )
 
         Spacer(modifier = Modifier.height(32.dp))
 
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
             repeat(4) { index ->
                 val active = index < enteredText.length
                 Box(
                     modifier = Modifier
-                        .size(16.dp)
+                        .size(14.dp)
                         .background(
-                            color = if (active) MaterialTheme.colorScheme.primary else Color(0xFFE5E5E5),
-                            shape = RoundedCornerShape(8.dp)
+                            color = if (active) Color.White else Color(0xFF3AAA87),
+                            shape = RoundedCornerShape(50)
                         )
                 )
             }
@@ -701,14 +763,14 @@ fun PinLockScreen(
 
         if (hasError) {
             Spacer(modifier = Modifier.height(12.dp))
-            Text("Incorrect safety PIN! Try again.", color = Color.Red, fontSize = 12.sp)
+            Text("Incorrect PIN! Try again.", color = Color(0xFFE24B4A), fontSize = 12.sp)
         }
 
-        Spacer(modifier = Modifier.height(48.dp))
+        Spacer(modifier = Modifier.height(40.dp))
 
         Column(
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-            modifier = Modifier.fillMaxWidth(0.6f)
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier.fillMaxWidth(0.65f)
         ) {
             val keys = listOf(
                 listOf("1", "2", "3"),
@@ -719,12 +781,17 @@ fun PinLockScreen(
             keys.forEach { row ->
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
+                    horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
                     row.forEach { key ->
+                        val isAction = key == "CLR" || key == "OK"
                         Box(
                             modifier = Modifier
-                                .size(56.dp)
+                                .size(64.dp)
+                                .background(
+                                    if (isAction) Color(0x0AFFFFFF) else Color(0x1AFFFFFF),
+                                    RoundedCornerShape(50)
+                                )
                                 .premiumClickable {
                                     hasError = false
                                     when (key) {
@@ -751,13 +818,9 @@ fun PinLockScreen(
                         ) {
                             Text(
                                 text = key,
-                                fontSize = 18.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = if (key == "CLR" || key == "OK") {
-                                    MaterialTheme.colorScheme.primary
-                                } else {
-                                    Color.Black
-                                }
+                                fontSize = if (isAction) 14.sp else 22.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = Color.White
                             )
                         }
                     }

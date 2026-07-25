@@ -28,71 +28,71 @@ data class AppTheme(
     companion object {
         val BEACH = AppTheme(
             name = "BEACH",
-            backgroundPrimary = Color(0xFFFDF6EC),
-            backgroundSecondary = Color(0xFFFFF8F0),
-            backgroundTertiary = Color(0xFFFAF0E0),
-            accentPrimary = Color(0xFF1A73E8),
-            accentLight = Color(0xFFE8F0FE),
+            backgroundPrimary = Color(0xFFF7F8FA),
+            backgroundSecondary = Color(0xFFFFFFFF),
+            backgroundTertiary = Color(0xFFF7F8FA),
+            accentPrimary = Color(0xFF1A5C4B),
+            accentLight = Color(0xFFE8F5F1),
             textPrimary = Color(0xFF1A1A1A),
-            textSecondary = Color(0xFF4A4A4A),
-            textTertiary = Color(0xFF888888),
-            statusBarColor = Color(0xFFFDF6EC),
+            textSecondary = Color(0xFF6B7280),
+            textTertiary = Color(0xFF9CA3AF),
+            statusBarColor = Color(0xFFF7F8FA),
             statusBarDarkIcons = true
         )
 
         val BLUE = AppTheme(
             name = "BLUE",
-            backgroundPrimary = Color(0xFFF2F4F7),
+            backgroundPrimary = Color(0xFFF7F8FA),
             backgroundSecondary = Color(0xFFFFFFFF),
-            backgroundTertiary = Color(0xFFFFFFFF),
-            accentPrimary = Color(0xFF1A73E8),
-            accentLight = Color(0xFFEEF2FF),
-            textPrimary = Color(0xFF0D0D0D),
-            textSecondary = Color(0xFF444444),
-            textTertiary = Color(0xFFAAAAAA),
-            statusBarColor = Color(0xFFF2F4F7),
+            backgroundTertiary = Color(0xFFF7F8FA),
+            accentPrimary = Color(0xFF22755F),
+            accentLight = Color(0xFFE8F5F1),
+            textPrimary = Color(0xFF1A1A1A),
+            textSecondary = Color(0xFF6B7280),
+            textTertiary = Color(0xFF9CA3AF),
+            statusBarColor = Color(0xFFF7F8FA),
             statusBarDarkIcons = true
         )
 
         val GREEN = AppTheme(
             name = "GREEN",
-            backgroundPrimary = Color(0xFFF1F8F4),
+            backgroundPrimary = Color(0xFFF7F8FA),
             backgroundSecondary = Color(0xFFFFFFFF),
-            backgroundTertiary = Color(0xFFFFFFFF),
-            accentPrimary = Color(0xFF1E8A3C),
-            accentLight = Color(0xFFE6F4EA),
-            textPrimary = Color(0xFF0D0D0D),
-            textSecondary = Color(0xFF444444),
-            textTertiary = Color(0xFFAAAAAA),
-            statusBarColor = Color(0xFFF1F8F4),
+            backgroundTertiary = Color(0xFFF7F8FA),
+            accentPrimary = Color(0xFF22A06B),
+            accentLight = Color(0xFFE8F8F0),
+            textPrimary = Color(0xFF1A1A1A),
+            textSecondary = Color(0xFF6B7280),
+            textTertiary = Color(0xFF9CA3AF),
+            statusBarColor = Color(0xFFF7F8FA),
             statusBarDarkIcons = true
         )
 
         val PURPLE = AppTheme(
             name = "PURPLE",
-            backgroundPrimary = Color(0xFFF5F0FF),
+            backgroundPrimary = Color(0xFFF7F8FA),
             backgroundSecondary = Color(0xFFFFFFFF),
-            backgroundTertiary = Color(0xFFFFFFFF),
-            accentPrimary = Color(0xFF6200EA),
-            accentLight = Color(0xFFEDE7F6),
-            textPrimary = Color(0xFF0D0D0D),
-            textSecondary = Color(0xFF444444),
-            textTertiary = Color(0xFFAAAAAA),
-            statusBarColor = Color(0xFFF5F0FF),
+            backgroundTertiary = Color(0xFFF7F8FA),
+            accentPrimary = Color(0xFF7C3AED),
+            accentLight = Color(0xFFF5F3FF),
+            textPrimary = Color(0xFF1A1A1A),
+            textSecondary = Color(0xFF6B7280),
+            textTertiary = Color(0xFF9CA3AF),
+            statusBarColor = Color(0xFFF7F8FA),
             statusBarDarkIcons = true
         )
 
         val TEAL = AppTheme(
             name = "TEAL",
-            backgroundPrimary = Color(0xFFF1FBF8),
+            backgroundPrimary = Color(0xFFF7F8FA),
             backgroundSecondary = Color(0xFFFFFFFF),
-            backgroundTertiary = Color(0xFFFFFFFF),
-            accentPrimary = Color(0xFF0F9D8A),
-            accentLight = Color(0xFFE0F4EF),
-            textPrimary = Color(0xFF0D0D0D),
-            textSecondary = Color(0xFF444444),
-            textTertiary = Color(0xFF8A8A8A),
-            statusBarColor = Color(0xFFF1FBF8),
+            backgroundTertiary = Color(0xFFF7F8FA),
+            accentPrimary = Color(0xFF1A5C4B),
+            accentLight = Color(0xFFE8F5F1),
+            textPrimary = Color(0xFF1A1A1A),
+            textSecondary = Color(0xFF6B7280),
+            textTertiary = Color(0xFF9CA3AF),
+            statusBarColor = Color(0xFFF7F8FA),
             statusBarDarkIcons = true
         )
 

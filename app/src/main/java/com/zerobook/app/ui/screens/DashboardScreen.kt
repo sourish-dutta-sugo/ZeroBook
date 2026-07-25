@@ -348,58 +348,131 @@ fun DashboardScreen(
             verticalArrangement = Arrangement.spacedBy(if (isTablet) 16.dp else 12.dp)
         ) {
 
-            // ========== TOP SECTION: Branding + Business Info ==========
-            Row(
+            // ========== TEAL HEADER SECTION ==========
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(bottom = 4.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                    .background(Color(0xFF1A5C4B))
+                    .padding(
+                        start = if (isTablet) 24.dp else 20.dp,
+                        end = if (isTablet) 24.dp else 20.dp,
+                        top = 20.dp,
+                        bottom = 24.dp
+                    )
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Image(
-                        painter = painterResource(R.drawable.logo_transparent),
-                        contentDescription = "ZeroBook",
-                        modifier = Modifier.size(if (isTablet) 36.dp else 30.dp),
-                        contentScale = ContentScale.Fit
-                    )
+                Column {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "ZeroBook",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0x99FFFFFF),
+                            letterSpacing = 2.sp
+                        )
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(32.dp)
+                                    .background(Color(0x1FFFFFFF), RoundedCornerShape(10.dp)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Receipt,
+                                    contentDescription = "Notifications",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                            Box(
+                                modifier = Modifier
+                                    .size(36.dp)
+                                    .background(Color(0x26FFFFFF), CircleShape)
+                                    .border(2.dp, Color(0x40FFFFFF), CircleShape),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = headerState.businessName.take(2).uppercase().ifBlank { "ZB" },
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = Color.White
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
                     Text(
-                        text = "ZeroBook",
-                        fontSize = if (isTablet) 20.sp else 17.sp,
+                        text = "Hello ${headerState.businessName.ifBlank { "there" }}",
+                        fontSize = 22.sp,
                         fontWeight = FontWeight.Bold,
-                        color = AppColors.textPrimary
-                    )
-                }
-                Column(
-                    horizontalAlignment = Alignment.End,
-                    verticalArrangement = Arrangement.spacedBy(2.dp)
-                ) {
-                    Text(
-                        text = headerState.businessName.ifBlank { "Business Profile" },
-                        fontSize = if (isTablet) 13.sp else 11.sp,
-                        color = AppColors.textPrimary,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        color = Color.White
                     )
                     Text(
-                        text = if (headerState.gstin.isBlank()) "Non-GST" else headerState.gstin,
-                        fontSize = if (isTablet) 12.sp else 10.sp,
-                        color = AppColors.textTertiary,
-                        fontWeight = FontWeight.Medium,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        text = "What would you like to do today?",
+                        fontSize = 13.sp,
+                        color = Color(0xFFA7B5B0)
                     )
-                    Text(
-                        text = "FY ${headerState.fyLabel}",
-                        fontSize = if (isTablet) 11.sp else 10.sp,
-                        color = AppColors.textTertiary,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Gold Balance Card
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(18.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFFC8943A)),
+                        elevation = CardDefaults.cardElevation(4.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(18.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column {
+                                Text(
+                                    text = "Cash & Bank balance",
+                                    fontSize = 12.sp,
+                                    color = Color(0x99FFFFFF),
+                                    fontWeight = FontWeight.Medium
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = Utils.formatIndianCurrency(balanceSnapshot.cashBalance + balanceSnapshot.bankBalance),
+                                    fontSize = 28.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White
+                                )
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = "FY ${headerState.fyLabel} \u00B7 Updated today",
+                                    fontSize = 11.sp,
+                                    color = Color(0x99FFFFFF)
+                                )
+                            }
+                            Box(
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .background(Color(0x26FFFFFF), CircleShape),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Receipt,
+                                    contentDescription = null,
+                                    tint = Color.White,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
+                        }
+                    }
                 }
             }
 
@@ -431,15 +504,15 @@ fun DashboardScreen(
 
             // ========== KPI CARDS SECTION ==========
             val cardList = buildList {
-                add(KpiDetails("Today's Sales", Utils.formatIndianCurrency(voucherSummary.todaySales), "vs yesterday", Color(0xFF1A73E8), null, voucherSummary.todaySales))
-                add(KpiDetails("Today's Purchases", Utils.formatIndianCurrency(voucherSummary.todayPurchases), "vs yesterday", Color(0xFF6B7280), null, voucherSummary.todayPurchases))
-                add(KpiDetails("This Month's Sales", Utils.formatIndianCurrency(voucherSummary.thisMonthSales), "running total", Color(0xFF059669), null, voucherSummary.thisMonthSales))
-                add(KpiDetails("Net Profit (Est.)", Utils.formatIndianCurrency(voucherSummary.netProfit), if (voucherSummary.netProfit >= 0) "positive" else "negative", if (voucherSummary.netProfit >= 0) Color(0xFF059669) else Color(0xFFDC2626), null, voucherSummary.netProfit))
-                add(KpiDetails("Receivables", Utils.formatIndianCurrency(balanceSnapshot.outstandingReceivable), "amount due in", Color(0xFFEA580C), null, balanceSnapshot.outstandingReceivable))
-                add(KpiDetails("Payables", Utils.formatIndianCurrency(balanceSnapshot.outstandingPayable), "amount due out", Color(0xFF7C3AED), null, balanceSnapshot.outstandingPayable))
-                add(KpiDetails("Cash Account", Utils.formatIndianCurrency(balanceSnapshot.cashBalance), "current balance", Color(0xFF0891B2), null, balanceSnapshot.cashBalance))
-                add(KpiDetails("Bank & UPI", Utils.formatIndianCurrency(balanceSnapshot.bankBalance), "current balance", Color(0xFF2563EB), null, balanceSnapshot.bankBalance))
-                add(KpiDetails("Inventory", Utils.formatIndianCurrency(inventoryValue), "stock value", Color(0xFF7C3AED), null, inventoryValue))
+                add(KpiDetails("Today's Sales", Utils.formatIndianCurrency(voucherSummary.todaySales), "vs yesterday", Color(0xFF22A06B), null, voucherSummary.todaySales))
+                add(KpiDetails("Today's Purchases", Utils.formatIndianCurrency(voucherSummary.todayPurchases), "vs yesterday", Color(0xFFE24B4A), null, voucherSummary.todayPurchases))
+                add(KpiDetails("This Month's Sales", Utils.formatIndianCurrency(voucherSummary.thisMonthSales), "running total", Color(0xFF22A06B), null, voucherSummary.thisMonthSales))
+                add(KpiDetails("Net Profit (Est.)", Utils.formatIndianCurrency(voucherSummary.netProfit), if (voucherSummary.netProfit >= 0) "positive" else "negative", if (voucherSummary.netProfit >= 0) Color(0xFF22A06B) else Color(0xFFE24B4A), null, voucherSummary.netProfit))
+                add(KpiDetails("Receivables", Utils.formatIndianCurrency(balanceSnapshot.outstandingReceivable), "amount due in", Color(0xFFD97706), null, balanceSnapshot.outstandingReceivable))
+                add(KpiDetails("Payables", Utils.formatIndianCurrency(balanceSnapshot.outstandingPayable), "amount due out", Color(0xFF6366F1), null, balanceSnapshot.outstandingPayable))
+                add(KpiDetails("Cash Account", Utils.formatIndianCurrency(balanceSnapshot.cashBalance), "current balance", Color(0xFF1A5C4B), null, balanceSnapshot.cashBalance))
+                add(KpiDetails("Bank & UPI", Utils.formatIndianCurrency(balanceSnapshot.bankBalance), "current balance", Color(0xFF22755F), null, balanceSnapshot.bankBalance))
+                add(KpiDetails("Inventory", Utils.formatIndianCurrency(inventoryValue), "stock value", Color(0xFFC8943A), null, inventoryValue))
                 if (showGstCard) {
                     add(KpiDetails("GST", Utils.formatIndianCurrency(voucherSummary.gstValue), "total tax", Color(0xFF059669), null, voucherSummary.gstValue))
                 }
@@ -510,12 +583,12 @@ fun DashboardScreen(
                             focusRequester.requestFocus()
                             keyboardController?.show()
                         },
-                    shape = RoundedCornerShape(999.dp),
+                    shape = RoundedCornerShape(50.dp),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = AppColors.primary.copy(alpha = 0.4f),
                         unfocusedBorderColor = AppColors.border,
-                        focusedContainerColor = AppColors.cardBg.copy(alpha = 0.85f),
-                        unfocusedContainerColor = AppColors.cardBg.copy(alpha = 0.7f)
+                        focusedContainerColor = Color.White,
+                        unfocusedContainerColor = Color.White
                     ),
                     singleLine = true,
                     textStyle = androidx.compose.ui.text.TextStyle(fontSize = 13.sp),
@@ -534,9 +607,9 @@ fun DashboardScreen(
                 } else {
                     Card(
                         modifier = Modifier.fillMaxWidth().heightIn(max = 400.dp),
-                        colors = CardDefaults.cardColors(containerColor = AppColors.cardBg),
-                        border = BorderStroke(1.dp, AppColors.border),
-                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color.White),
+                        border = BorderStroke(0.5.dp, AppColors.border),
+                        shape = RoundedCornerShape(14.dp),
                         elevation = CardDefaults.cardElevation(4.dp)
                     ) {
                         Column(modifier = Modifier.verticalScroll(rememberScrollState()).padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -599,10 +672,10 @@ fun DashboardScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .premiumClickable { showProgressDetails = true },
-                        colors = CardDefaults.cardColors(containerColor = AppColors.cardBg),
-                        shape = RoundedCornerShape(999.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color.White),
+                        shape = RoundedCornerShape(50.dp),
                         elevation = CardDefaults.cardElevation(2.dp),
-                        border = BorderStroke(1.dp, AppColors.border)
+                        border = BorderStroke(0.5.dp, AppColors.border)
                     ) {
                         Row(
                             modifier = Modifier
@@ -668,11 +741,11 @@ fun DashboardScreen(
                             modifier = Modifier.padding(horizontal = 4.dp)
                         )
                         val quickActions = listOf(
-                            Triple("Quick Sale", Icons.Default.Bolt, Color(0xFF1A73E8)) to "QUICK_SALE",
-                            Triple("Receipt", Icons.Default.Payments, Color(0xFF059669)) to "RECEIPT",
-                            Triple("Payments", Icons.Default.Add, Color(0xFFDC2626)) to "PAYMENT",
-                            Triple("Reports", Icons.AutoMirrored.Filled.Assignment, Color(0xFFEA580C)) to "REPORTS",
-                            Triple("Expenses", Icons.AutoMirrored.Filled.TrendingUp, Color(0xFF7C3AED)) to "EXPENSES"
+                            Triple("Quick Sale", Icons.Default.Bolt, Color(0xFF1A5C4B)) to "QUICK_SALE",
+                            Triple("Receipt", Icons.Default.Payments, Color(0xFF1A5C4B)) to "RECEIPT",
+                            Triple("Payments", Icons.Default.Add, Color(0xFF1A5C4B)) to "PAYMENT",
+                            Triple("Reports", Icons.AutoMirrored.Filled.Assignment, Color(0xFF1A5C4B)) to "REPORTS",
+                            Triple("Expenses", Icons.AutoMirrored.Filled.TrendingUp, Color(0xFF1A5C4B)) to "EXPENSES"
                         )
                         val gridColumns = if (isTablet) 5 else quickActions.size
                         val chunks = quickActions.chunked(gridColumns)
@@ -811,9 +884,11 @@ fun DashboardScreen(
                                                 .size(38.dp)
                                                 .background(
                                                     when (voucher.type) {
-                                                        "RECEIPT", "SALE" -> AppColors.creditBg
-                                                        "PAYMENT", "PURCHASE" -> AppColors.debitBg
-                                                        else -> AppColors.infoBg
+                                                        "SALE" -> Color(0xFFE8F8F0)
+                                                        "PURCHASE" -> Color(0xFFFEF0F0)
+                                                        "RECEIPT" -> Color(0xFFFFF7E6)
+                                                        "PAYMENT" -> Color(0xFFFFF7E6)
+                                                        else -> Color(0xFFEEF2FF)
                                                     },
                                                     RoundedCornerShape(10.dp)
                                                 ),
@@ -821,16 +896,19 @@ fun DashboardScreen(
                                         ) {
                                             Icon(
                                                 imageVector = when (voucher.type) {
-                                                    "RECEIPT" -> Icons.Default.ArrowUpward
-                                                    "PAYMENT" -> Icons.Default.ArrowDownward
-                                                    "SALE" -> Icons.Default.Receipt
-                                                    else -> Icons.Default.Payments
+                                                    "SALE" -> Icons.Default.ArrowUpward
+                                                    "PURCHASE" -> Icons.Default.ArrowDownward
+                                                    "RECEIPT" -> Icons.Default.Payments
+                                                    "PAYMENT" -> Icons.Default.Add
+                                                    else -> Icons.Default.Receipt
                                                 },
                                                 contentDescription = voucher.type,
                                                 tint = when (voucher.type) {
-                                                    "RECEIPT", "SALE" -> AppColors.credit
-                                                    "PAYMENT", "PURCHASE" -> AppColors.debit
-                                                    else -> AppColors.primary
+                                                    "SALE" -> Color(0xFF22A06B)
+                                                    "PURCHASE" -> Color(0xFFE24B4A)
+                                                    "RECEIPT" -> Color(0xFFD97706)
+                                                    "PAYMENT" -> Color(0xFFD97706)
+                                                    else -> Color(0xFF6366F1)
                                                 },
                                                 modifier = Modifier.size(18.dp)
                                             )
@@ -860,7 +938,7 @@ fun DashboardScreen(
                                             Utils.formatIndianCurrency(voucher.netAmount),
                                             fontSize = 13.sp,
                                             fontWeight = FontWeight.Bold,
-                                            color = AppColors.textPrimary
+                                            color = if (voucher.type in listOf("SALE", "RECEIPT")) Color(0xFF22A06B) else Color(0xFFE24B4A)
                                         )
                                         Text(
                                             deriveTransactionStatus(voucher),

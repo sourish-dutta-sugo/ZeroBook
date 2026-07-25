@@ -25,7 +25,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 
-private val TextDark = Color(0xFF0D0D0D)
+private val TextDark = Color(0xFF1A1A1A)
 private val MenuWhite = Color(0xFFFFFFFF)
 
 data class PinLookupResult(
@@ -104,21 +104,21 @@ fun RetailTextField(
             Text(
                 text = label,
                 fontSize = 12.sp,
-                fontWeight = FontWeight.Medium,
+                fontWeight = FontWeight.SemiBold,
                 color = AppColors.labelText
             )
         },
         placeholder = placeholder?.let {
-            { Text(text = it, fontSize = 15.sp, color = AppColors.inputPlaceholder) }
+            { Text(text = it, fontSize = 14.sp, color = AppColors.inputPlaceholder) }
         },
         modifier = modifier.fillMaxWidth(),
         readOnly = readOnly,
         singleLine = singleLine,
-        textStyle = TextStyle(color = AppColors.inputText, fontSize = 15.sp),
+        textStyle = TextStyle(color = AppColors.inputText, fontSize = 14.sp),
         trailingIcon = trailingIcon,
         keyboardOptions = keyboardOptions,
         keyboardActions = keyboardActions,
-        shape = RoundedCornerShape(8.dp),
+        shape = RoundedCornerShape(12.dp),
         isError = isError,
         supportingText = supportingText,
         colors = zeroBookInputColors()
