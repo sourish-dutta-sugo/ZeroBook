@@ -342,7 +342,7 @@ fun InvoiceScreen(
                         )
                     }
                 }
-                if (bundle.document.voucher.type == "QUOTATION" || bundle.document.voucher.type == "DELIVERY_CHALLAN") {
+                if (bundle.document.voucher.type in setOf("QUOTATION", "DELIVERY_CHALLAN", "SALES_ORDER", "PROFORMA", "PURCHASE_ORDER", "GOODS_RECEIPT_NOTE")) {
                     Button(
                         onClick = { onCreateSaleFromVoucher(voucherId) },
                         modifier = Modifier
@@ -351,8 +351,17 @@ fun InvoiceScreen(
                             .height(48.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = AppColors.primary)
                     ) {
+                        val convertLabel = when (bundle.document.voucher.type) {
+                            "QUOTATION" -> "Convert to Invoice"
+                            "DELIVERY_CHALLAN" -> "Convert Challan to Invoice"
+                            "SALES_ORDER" -> "Convert to Invoice"
+                            "PROFORMA" -> "Convert to Tax Invoice"
+                            "PURCHASE_ORDER" -> "Convert to Purchase"
+                            "GOODS_RECEIPT_NOTE" -> "Convert to Purchase"
+                            else -> "Convert"
+                        }
                         Text(
-                            if (bundle.document.voucher.type == "QUOTATION") "Convert to Invoice" else "Convert Challan to Invoice",
+                            convertLabel,
                             color = Color.White,
                             fontWeight = FontWeight.Bold
                         )

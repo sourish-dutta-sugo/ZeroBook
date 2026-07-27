@@ -432,6 +432,14 @@ object InvoiceGenerator {
             source.voucher.type == "CREDIT_NOTE" -> "CREDIT NOTE"
             source.voucher.type == "DEBIT_NOTE" -> "DEBIT NOTE"
             source.voucher.type == "PAYMENT" && source.extras.isAdvance -> "ADVANCE PAYMENT"
+            source.voucher.type == "SALES_ORDER" -> "SALES ORDER"
+            source.voucher.type == "PURCHASE_ORDER" -> "PURCHASE ORDER"
+            source.voucher.type == "GOODS_RECEIPT_NOTE" -> "GOODS RECEIPT NOTE"
+            source.voucher.type == "INQUIRY" -> "REQUEST FOR QUOTATION"
+            source.voucher.type == "MATERIAL_NOTE" -> "MATERIAL TRANSFER NOTE"
+            source.voucher.type == "REJECTION_NOTE" -> "REJECTION NOTE"
+            source.voucher.type == "PETTY_CASH" -> "PETTY CASH VOUCHER"
+            source.voucher.type == "PROFORMA" -> "PROFORMA INVOICE"
             else -> if (source.profile.gstin.isNotBlank()) "TAX INVOICE" else "INVOICE"
         }
         return InvoiceDocument(
@@ -459,7 +467,7 @@ object InvoiceGenerator {
     private suspend fun validateInvoiceDocument(document: InvoiceDocument) {
         check(document.invoiceNumber.isNotBlank()) { "Invoice number is missing." }
         check(document.business.businessName.isNotBlank()) { "Business name is missing." }
-        val itemlessAllowedTypes = setOf("RECEIPT", "PAYMENT", "JOURNAL", "CREDIT_NOTE", "DEBIT_NOTE", "INCOME")
+        val itemlessAllowedTypes = setOf("RECEIPT", "PAYMENT", "JOURNAL", "CREDIT_NOTE", "DEBIT_NOTE", "INCOME", "PETTY_CASH", "INQUIRY")
         check(document.items.isNotEmpty() || document.voucher.type in itemlessAllowedTypes) { "Invoice line items are missing." }
         if (document.items.isNotEmpty()) {
             val computedTaxable = document.items.sumOf { it.taxableAmount } + document.additionalCharges.sumOf { if (it.isTaxable) it.amount else 0.0 }

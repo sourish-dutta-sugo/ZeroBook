@@ -137,27 +137,45 @@ private data class VoucherTypeCardData(
     val accent: Color
 )
 
-private fun voucherTypeCards(): List<VoucherTypeCardData> = listOf(
-    VoucherTypeCardData("JOURNAL", "Journal", "Manual ledger adjustment", Icons.Outlined.Edit, Color(0xFF475569)),
-    VoucherTypeCardData("SALE", "Sales", "Record sales to customers", Icons.AutoMirrored.Filled.ReceiptLong, Color(0xFF16A34A)),
-    VoucherTypeCardData("PURCHASE", "Purchase", "Record purchases from suppliers", Icons.Default.Store, Color(0xFF7C3AED)),
-    VoucherTypeCardData("RECEIPT", "Receipt", "Receive customer payments", Icons.Default.Payments, Color(0xFF059669)),
-    VoucherTypeCardData("PAYMENT", "Payment", "Record outgoing payments", Icons.Default.CreditCard, Color(0xFFDC2626)),
-    VoucherTypeCardData("SALE_RETURN", "Sales Return", "Customer returns goods", Icons.Default.SwapHoriz, Color(0xFFEA580C)),
-    VoucherTypeCardData("PURCHASE_RETURN", "Purchase Return", "Return goods to supplier", Icons.Default.SwapHoriz, Color(0xFFB91C1C)),
-    VoucherTypeCardData("BILLS_RECEIVABLE", "Bills Receivable", "View amounts owed to you", Icons.AutoMirrored.Filled.ReceiptLong, Color(0xFF0F766E)),
-    VoucherTypeCardData("BILLS_PAYABLE", "Bills Payable", "View amounts you owe", Icons.AutoMirrored.Filled.ReceiptLong, Color(0xFF92400E)),
-    VoucherTypeCardData("DEBIT_NOTE", "Debit Note", "Raise debit against party", Icons.Default.Description, Color(0xFF9333EA)),
-    VoucherTypeCardData("CREDIT_NOTE", "Credit Note", "Issue credit to party", Icons.Default.Description, Color(0xFF1D4ED8)),
-    VoucherTypeCardData("QUOTATION", "Quotation", "Create estimate or quote", Icons.Default.RequestQuote, Color(0xFF4F46E5)),
-    VoucherTypeCardData("DELIVERY_CHALLAN", "Delivery Challan", "Record goods dispatch", Icons.Default.LocalShipping, Color(0xFF0891B2)),
-    VoucherTypeCardData("INCOME", "Income", "Track incoming funds", Icons.Default.Payments, Color(0xFF0D9488)),
-    VoucherTypeCardData("EXPENSE", "Expense", "Record a business expense", Icons.Default.Inventory2, Color(0xFFDB2777))
+private data class VoucherTabGroup(
+    val name: String,
+    val icon: androidx.compose.ui.graphics.vector.ImageVector,
+    val types: List<VoucherTypeCardData>
+)
+
+private fun voucherTypeTabs(): List<VoucherTabGroup> = listOf(
+    VoucherTabGroup("Sales & Orders", Icons.AutoMirrored.Filled.ReceiptLong, listOf(
+        VoucherTypeCardData("QUOTATION", "Quotation", "Create estimate or quote", Icons.Default.RequestQuote, Color(0xFF4F46E5)),
+        VoucherTypeCardData("SALES_ORDER", "Sales Order", "Confirm customer order", Icons.Default.SwapHoriz, Color(0xFF7C3AED)),
+        VoucherTypeCardData("DELIVERY_CHALLAN", "Delivery Challan", "Record goods dispatch", Icons.Default.LocalShipping, Color(0xFF0891B2)),
+        VoucherTypeCardData("SALE", "Tax Invoice", "Record sales to customers", Icons.AutoMirrored.Filled.ReceiptLong, Color(0xFF16A34A)),
+        VoucherTypeCardData("CREDIT_NOTE", "Credit Note", "Issue credit to party", Icons.Default.Description, Color(0xFF1D4ED8))
+    )),
+    VoucherTabGroup("Purchases", Icons.Default.Store, listOf(
+        VoucherTypeCardData("PURCHASE_ORDER", "Purchase Order", "Place order with supplier", Icons.Default.Store, Color(0xFF7C3AED)),
+        VoucherTypeCardData("GOODS_RECEIPT_NOTE", "Goods Receipt Note", "Record goods received", Icons.Default.Inventory2, Color(0xFF0F766E)),
+        VoucherTypeCardData("PURCHASE", "Purchase Invoice", "Record purchases from suppliers", Icons.Default.Store, Color(0xFF7C3AED)),
+        VoucherTypeCardData("DEBIT_NOTE", "Debit Note", "Raise debit against party", Icons.Default.Description, Color(0xFF9333EA))
+    )),
+    VoucherTabGroup("Banking & Accounts", Icons.Default.Payments, listOf(
+        VoucherTypeCardData("RECEIPT", "Receipt", "Receive customer payments", Icons.Default.Payments, Color(0xFF059669)),
+        VoucherTypeCardData("PAYMENT", "Payment", "Record outgoing payments", Icons.Default.CreditCard, Color(0xFFDC2626)),
+        VoucherTypeCardData("EXPENSE", "Expense", "Record a business expense", Icons.Default.Inventory2, Color(0xFFDB2777)),
+        VoucherTypeCardData("INCOME", "Income", "Track incoming funds", Icons.Default.Payments, Color(0xFF0D9488)),
+        VoucherTypeCardData("JOURNAL", "Journal", "Manual ledger adjustment", Icons.Outlined.Edit, Color(0xFF475569))
+    )),
+    VoucherTabGroup("More", Icons.Default.Add, listOf(
+        VoucherTypeCardData("INQUIRY", "Inquiry / RFQ", "Request price from supplier", Icons.Default.RequestQuote, Color(0xFF0D9488)),
+        VoucherTypeCardData("PROFORMA", "Proforma Invoice", "Draft invoice for approval", Icons.AutoMirrored.Filled.Assignment, Color(0xFF4F46E5)),
+        VoucherTypeCardData("MATERIAL_NOTE", "Material In/Out", "Transfer stock between godowns", Icons.Default.Inventory2, Color(0xFFB91C1C)),
+        VoucherTypeCardData("REJECTION_NOTE", "Rejection In/Out", "Record rejected items", Icons.Default.SwapHoriz, Color(0xFFEA580C)),
+        VoucherTypeCardData("PETTY_CASH", "Petty Cash", "Record small cash expenses", Icons.Default.Payments, Color(0xFF0891B2))
+    ))
 )
 
 private fun voucherTypeLabel(type: String): String = when (type) {
-    "SALE" -> "Sales"
-    "PURCHASE" -> "Purchase"
+    "SALE" -> "Tax Invoice"
+    "PURCHASE" -> "Purchase Invoice"
     "RECEIPT" -> "Receipt"
     "PAYMENT" -> "Payment"
     "JOURNAL" -> "Journal"
@@ -171,26 +189,42 @@ private fun voucherTypeLabel(type: String): String = when (type) {
     "DELIVERY_CHALLAN" -> "Delivery Challan"
     "INCOME" -> "Income"
     "EXPENSE" -> "Expense"
+    "INQUIRY" -> "Inquiry / RFQ"
+    "SALES_ORDER" -> "Sales Order"
+    "PURCHASE_ORDER" -> "Purchase Order"
+    "GOODS_RECEIPT_NOTE" -> "Goods Receipt Note"
+    "MATERIAL_NOTE" -> "Material In/Out"
+    "REJECTION_NOTE" -> "Rejection In/Out"
+    "PETTY_CASH" -> "Petty Cash"
+    "PROFORMA" -> "Proforma Invoice"
     else -> type.replace('_', ' ').replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
 }
 
 private val voucherTypeFilterOptions = listOf(
     "ALL",
-    "JOURNAL",
     "SALE",
     "PURCHASE",
-    "RECEIPT",
-    "PAYMENT",
-    "SALE_RETURN",
-    "PURCHASE_RETURN",
-    "DEBIT_NOTE",
-    "CREDIT_NOTE",
-    "BILLS_RECEIVABLE",
-    "BILLS_PAYABLE",
     "QUOTATION",
     "DELIVERY_CHALLAN",
+    "SALES_ORDER",
+    "PURCHASE_ORDER",
+    "GOODS_RECEIPT_NOTE",
+    "CREDIT_NOTE",
+    "DEBIT_NOTE",
+    "RECEIPT",
+    "PAYMENT",
     "INCOME",
-    "EXPENSE"
+    "EXPENSE",
+    "JOURNAL",
+    "INQUIRY",
+    "PROFORMA",
+    "MATERIAL_NOTE",
+    "REJECTION_NOTE",
+    "PETTY_CASH",
+    "SALE_RETURN",
+    "PURCHASE_RETURN",
+    "BILLS_RECEIVABLE",
+    "BILLS_PAYABLE"
 )
 
 private const val SORT_DEFAULT = "DEFAULT"
@@ -261,6 +295,14 @@ private fun voucherBadgeColor(type: String): Color = when (type) {
     "DELIVERY_CHALLAN" -> Color(0xFF0891B2)
     "INCOME" -> Color(0xFF0D9488)
     "EXPENSE" -> Color(0xFFDB2777)
+    "INQUIRY" -> Color(0xFF0D9488)
+    "SALES_ORDER" -> Color(0xFF7C3AED)
+    "PURCHASE_ORDER" -> Color(0xFF4F46E5)
+    "GOODS_RECEIPT_NOTE" -> Color(0xFF0F766E)
+    "MATERIAL_NOTE" -> Color(0xFFB91C1C)
+    "REJECTION_NOTE" -> Color(0xFFEA580C)
+    "PETTY_CASH" -> Color(0xFF0891B2)
+    "PROFORMA" -> Color(0xFF4F46E5)
     else -> AppColors.primary
 }
 
@@ -1731,11 +1773,11 @@ fun NewVoucherScreen(
         val bstate = profile?.stateCode ?: ""
         pstate.isNotEmpty() && pstate != bstate
     }
-    val isCustomerVoucher = selectedType == "SALE" || selectedType == "RECEIPT" || selectedType == "SALE_RETURN"
-    val isThreeStepVoucher = selectedType == "SALE" || selectedType == "PURCHASE"
+    val isCustomerVoucher = selectedType in setOf("SALE", "RECEIPT", "SALE_RETURN", "SALES_ORDER", "PROFORMA")
+    val isThreeStepVoucher = selectedType in setOf("SALE", "PURCHASE", "SALES_ORDER", "PURCHASE_ORDER", "PROFORMA", "GOODS_RECEIPT_NOTE")
     val pagerState = rememberPagerState(initialPage = (formStep - 1).coerceIn(0, 2), pageCount = { 3 })
     val voucherTabs = remember(selectedType) {
-        if (selectedType == "PURCHASE") {
+        if (selectedType == "PURCHASE" || selectedType == "PURCHASE_ORDER" || selectedType == "GOODS_RECEIPT_NOTE") {
             listOf(
                 Triple("Supplier & Items", Icons.Default.Store, 0),
                 Triple("Payment & Charges", Icons.Default.CreditCard, 1),
@@ -1787,7 +1829,8 @@ fun NewVoucherScreen(
         parties.filter { party ->
             when {
                 isCustomerVoucher -> party.type == "CUSTOMER" || party.type == "BOTH"
-                selectedType == "PURCHASE" || selectedType == "PAYMENT" || selectedType == "PURCHASE_RETURN" ->
+                selectedType == "PURCHASE" || selectedType == "PAYMENT" || selectedType == "PURCHASE_RETURN" ||
+                    selectedType == "PURCHASE_ORDER" || selectedType == "GOODS_RECEIPT_NOTE" ->
                     party.type == "SUPPLIER" || party.type == "BOTH"
                 else -> true
             }
@@ -1954,10 +1997,10 @@ fun NewVoucherScreen(
                 setDirectAmount(request.amount ?: pendingInvoices.filter { pendingInvoiceChecks[it.id] != false }.sumOf { it.outstandingAmount })
             }
             viewModel.setVoucherPrefillRequest(null)
-        } else if (request.voucherType == "SALE" && !request.sourceVoucherId.isNullOrBlank()) {
+        } else if (request.voucherType in setOf("SALE", "PURCHASE") && !request.sourceVoucherId.isNullOrBlank()) {
             val sourceVoucher = vouchers.find { it.id == request.sourceVoucherId }
             if (sourceVoucher != null) {
-                selectedType = "SALE"
+                selectedType = request.voucherType
                 step = 2
                 selectedParty = parties.find { it.id == sourceVoucher.partyId }
                 lineItems.clear()
@@ -2004,7 +2047,9 @@ fun NewVoucherScreen(
                 showConfirmSaveDialog = true
             }
         } else {
-            val isBill = (selectedType != "RECEIPT" && selectedType != "PAYMENT")
+            val itemlessTypes = setOf("RECEIPT", "PAYMENT", "INCOME", "EXPENSE", "PETTY_CASH", "INQUIRY")
+            val partyRequiredTypes = setOf("PURCHASE", "PAYMENT", "PURCHASE_ORDER", "GOODS_RECEIPT_NOTE")
+            val isBill = selectedType !in itemlessTypes
             if ((selectedType == "SALE_RETURN" || selectedType == "PURCHASE_RETURN") && selectedSourceVoucherId == null) {
                 android.widget.Toast.makeText(context, "Cannot save: Select the original invoice first.", android.widget.Toast.LENGTH_LONG).show()
             } else if ((selectedType == "SALE_RETURN" || selectedType == "PURCHASE_RETURN") && lineItems.none { it.qty > 0.0 }) {
@@ -2023,8 +2068,8 @@ fun NewVoucherScreen(
                 android.widget.Toast.makeText(context, "Cannot save: Main Cheque details are missing!", android.widget.Toast.LENGTH_LONG).show()
             } else if (voucherNo.isBlank()) {
                 android.widget.Toast.makeText(context, "Cannot save: Voucher Number is missing!", android.widget.Toast.LENGTH_LONG).show()
-            } else if ((selectedType == "PURCHASE" || selectedType == "PAYMENT") && selectedParty == null) {
-                android.widget.Toast.makeText(context, "Cannot save: Party is required for Purchase and Payment!", android.widget.Toast.LENGTH_LONG).show()
+            } else if (selectedType in partyRequiredTypes && selectedParty == null) {
+                android.widget.Toast.makeText(context, "Cannot save: Party is required for this voucher type!", android.widget.Toast.LENGTH_LONG).show()
             } else {
                 saveShouldPrint = shouldPrint
                 showConfirmSaveDialog = true
@@ -2111,7 +2156,8 @@ fun NewVoucherScreen(
                 chequeDate = if (paymentMode == "CHEQUE") chequeDate else null,
                 bankName = if (paymentMode == "CHEQUE") bankName else null,
                 isIgst = isInterstate,
-                status = if (selectedType == "QUOTATION" || selectedType == "DELIVERY_CHALLAN") "DRAFT" else "POSTED",
+                documentType = if (selectedType == "PROFORMA") "PROFORMA" else "",
+                status = if (selectedType in setOf("QUOTATION", "DELIVERY_CHALLAN", "SALES_ORDER", "PURCHASE_ORDER", "INQUIRY")) "DRAFT" else if (selectedType == "PROFORMA") "DRAFT" else "POSTED",
                 receiptImagePath = null,
                 attachmentPath = savedAttachmentPath,
                 bankIfsc = if (paymentMode == "BANK") bankIfsc else null,
@@ -2122,6 +2168,7 @@ fun NewVoucherScreen(
                 outstandingAmount = when {
                     selectedType == "SALE" && (paymentMode == "CREDIT" || paymentMode == "PART PAYMENT") -> remainingCreditAmount
                     selectedType == "PURCHASE" && selectedParty != null -> netAmount.value
+                    selectedType == "GOODS_RECEIPT_NOTE" && selectedParty != null -> netAmount.value
                     else -> 0.0
                 }
             )
@@ -2144,13 +2191,13 @@ fun NewVoucherScreen(
                     if (shouldPrint) {
                         printedVoucherId = finalId
                         showPrintReceiptDialog = true
-                    } else if (selectedType == "SALE" || isEditMode) {
+                    } else if (selectedType == "SALE" || selectedType == "PROFORMA" || isEditMode) {
                         onNavigateToInvoice(finalId)
                     } else {
                         onNavigateBack()
                     }
                 }
-                if (selectedType in setOf("SALE", "PURCHASE", "RECEIPT", "PAYMENT")) {
+                if (selectedType in setOf("SALE", "PURCHASE", "RECEIPT", "PAYMENT", "PROFORMA", "SALES_ORDER", "PURCHASE_ORDER")) {
                     viewModel.syncSaleVoucherReferenceFields(finalId, saleReferenceNo, saleOtherReferences)
                 }
                 if (
@@ -2251,108 +2298,121 @@ fun NewVoucherScreen(
     }
 
     if (step == 1) {
-        // Step 1: Type Selection Screen
+        val tabs = voucherTypeTabs()
+        val typeTabPagerState = rememberPagerState(pageCount = { tabs.size })
+
         Scaffold(
             containerColor = AppColors.screenBg,
             topBar = {
-                TopAppBar(
-                    title = { Text("New Voucher", fontWeight = FontWeight.Bold) },
-                    navigationIcon = {
-                        IconButton(onClick = onNavigateBack) {
-                            Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                        }
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = AppColors.screenBg,
-                        titleContentColor = AppColors.textPrimary,
-                        navigationIconContentColor = AppColors.textPrimary
+                Column {
+                    TopAppBar(
+                        title = { Text("New Voucher", fontWeight = FontWeight.Bold) },
+                        navigationIcon = {
+                            IconButton(onClick = onNavigateBack) {
+                                Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                            }
+                        },
+                        colors = TopAppBarDefaults.topAppBarColors(
+                            containerColor = AppColors.screenBg,
+                            titleContentColor = AppColors.textPrimary,
+                            navigationIconContentColor = AppColors.textPrimary
+                        )
                     )
-                )
+                    TabRow(selectedTabIndex = typeTabPagerState.currentPage) {
+                        tabs.forEachIndexed { index, tab ->
+                            Tab(
+                                selected = typeTabPagerState.currentPage == index,
+                                onClick = { coroutineScope.launch { typeTabPagerState.animateScrollToPage(index) } },
+                                text = { Text(tab.name, maxLines = 1) },
+                                icon = { Icon(tab.icon, contentDescription = null, modifier = Modifier.size(18.dp)) }
+                            )
+                        }
+                    }
+                }
             }
         ) { innerPadding ->
-            Column(
+            HorizontalPager(
+                state = typeTabPagerState,
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(AppColors.screenBg)
                     .padding(innerPadding)
-            ) {
+            ) { pageIndex ->
+                val tab = tabs[pageIndex]
                 Column(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 20.dp, vertical = 4.dp)
+                        .fillMaxSize()
+                        .background(AppColors.screenBg)
                 ) {
+                    Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         text = "Select voucher type",
-                        fontSize = 14.sp,
+                        fontSize = 13.sp,
                         color = AppColors.textSecondary,
-                        fontWeight = FontWeight.Normal
+                        fontWeight = FontWeight.Normal,
+                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp)
                     )
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                val voucherTypes = voucherTypeCards()
-
-                LazyVerticalGrid(
-                    columns = GridCells.Fixed(if (isTablet) 2 else 1),
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 32.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    items(voucherTypes.size) { index ->
-                        val type = voucherTypes[index]
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    selectedType = type.key
-                                    formStep = 1
-                                    step = 2
-                                }
-                                .shadow(2.dp, RoundedCornerShape(14.dp), ambientColor = Color(0x08000000))
-                                .border(1.dp, type.accent.copy(alpha = 0.15f), RoundedCornerShape(14.dp)),
-                            colors = CardDefaults.cardColors(containerColor = AppColors.cardBg),
-                            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-                        ) {
-                            Row(
+                    Spacer(modifier = Modifier.height(4.dp))
+                    LazyVerticalGrid(
+                        columns = GridCells.Fixed(if (isTablet) 2 else 1),
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 32.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        items(tab.types.size) { index ->
+                            val type = tab.types[index]
+                            Card(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(14.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(14.dp)
+                                    .clickable {
+                                        selectedType = type.key
+                                        formStep = 1
+                                        step = 2
+                                    }
+                                    .shadow(2.dp, RoundedCornerShape(14.dp), ambientColor = Color(0x08000000))
+                                    .border(1.dp, type.accent.copy(alpha = 0.15f), RoundedCornerShape(14.dp)),
+                                colors = CardDefaults.cardColors(containerColor = AppColors.cardBg),
+                                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
                             ) {
-                                Box(
+                                Row(
                                     modifier = Modifier
-                                        .size(42.dp)
-                                        .background(type.accent.copy(alpha = 0.1f), CircleShape),
-                                    contentAlignment = Alignment.Center
+                                        .fillMaxWidth()
+                                        .padding(14.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(14.dp)
                                 ) {
-                                    Icon(
-                                        type.icon,
-                                        contentDescription = null,
-                                        tint = type.accent,
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                }
+                                    Box(
+                                        modifier = Modifier
+                                            .size(42.dp)
+                                            .background(type.accent.copy(alpha = 0.1f), CircleShape),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            type.icon,
+                                            contentDescription = null,
+                                            tint = type.accent,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    }
 
-                                Column(
-                                    modifier = Modifier.weight(1f),
-                                    verticalArrangement = Arrangement.spacedBy(2.dp)
-                                ) {
-                                    Text(
-                                        type.title,
-                                        fontWeight = FontWeight.SemiBold,
-                                        fontSize = 14.sp,
-                                        color = AppColors.textPrimary
-                                    )
-                                    Text(
-                                        type.description,
-                                        fontSize = 12.sp,
-                                        color = AppColors.textTertiary,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
+                                    Column(
+                                        modifier = Modifier.weight(1f),
+                                        verticalArrangement = Arrangement.spacedBy(2.dp)
+                                    ) {
+                                        Text(
+                                            type.title,
+                                            fontWeight = FontWeight.SemiBold,
+                                            fontSize = 14.sp,
+                                            color = AppColors.textPrimary
+                                        )
+                                        Text(
+                                            type.description,
+                                            fontSize = 12.sp,
+                                            color = AppColors.textTertiary,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -2542,9 +2602,7 @@ fun NewVoucherScreen(
                     TopAppBar(
                         title = {
                             Text(
-                                if (selectedType == "SALE") "Sale Voucher"
-                                else if (selectedType == "PURCHASE") "Purchase Voucher"
-                                else "New $selectedType",
+                                voucherTypeLabel(selectedType),
                                 fontWeight = FontWeight.Bold
                             )
                         },
@@ -2623,7 +2681,7 @@ fun NewVoucherScreen(
                         StickyBottomBar(
                             netAmount = netAmount.value,
                             selectedType = selectedType,
-                            saveButtonLabel = if (selectedType == "QUOTATION" || selectedType == "DELIVERY_CHALLAN") {
+                            saveButtonLabel = if (selectedType in setOf("QUOTATION", "DELIVERY_CHALLAN", "SALES_ORDER", "PURCHASE_ORDER", "INQUIRY", "PROFORMA")) {
                                 if (isEditMode) "Update Draft" else "Save Draft"
                             } else {
                                 if (isEditMode) "Update & Post" else "Save & Post"

@@ -533,6 +533,14 @@ class AppRepository(private val db: AppDatabase) {
             "QUOTATION" -> "QUO"
             "DELIVERY_CHALLAN" -> "DC"
             "JOURNAL" -> "JNL"
+            "INQUIRY" -> "RFQ"
+            "SALES_ORDER" -> "SOR"
+            "PURCHASE_ORDER" -> "POR"
+            "GOODS_RECEIPT_NOTE" -> "GRN"
+            "MATERIAL_NOTE" -> "STK"
+            "REJECTION_NOTE" -> "REJ"
+            "PETTY_CASH" -> "PCV"
+            "PROFORMA" -> "PFI"
             else -> "VCH"
         }
         val pattern = "$prefix/$fy/%"
@@ -589,7 +597,7 @@ class AppRepository(private val db: AppDatabase) {
             val ledgerList = mutableListOf<LedgerEntry>()
             val partyDesc = partyName ?: "Cash/Bank Account"
             val shouldPostAccounts = resolvedVoucher.status == "POSTED" &&
-                resolvedVoucher.type !in setOf("QUOTATION", "DELIVERY_CHALLAN")
+                resolvedVoucher.type !in setOf("QUOTATION", "DELIVERY_CHALLAN", "SALES_ORDER", "PURCHASE_ORDER", "INQUIRY", "PROFORMA")
 
             if (shouldPostAccounts) when (resolvedVoucher.type) {
                 "SALE" -> {
@@ -1241,6 +1249,120 @@ class AppRepository(private val db: AppDatabase) {
                         )
                     )
                 }
+
+                "GOODS_RECEIPT_NOTE" -> {
+                    ledgerList.add(
+                        LedgerEntry(
+                            id = UUID.randomUUID().toString(),
+                            accountHead = "Inventory Account",
+                            voucherId = voucher.id,
+                            date = voucher.date,
+                            debit = voucher.taxableAmount,
+                            credit = 0.0,
+                            narration = "Goods Receipt - inventory inward",
+                            createdAt = System.currentTimeMillis()
+                        )
+                    )
+                    val crHead = "Party: $partyDesc"
+                    ledgerList.add(
+                        LedgerEntry(
+                            id = UUID.randomUUID().toString(),
+                            accountHead = crHead,
+                            partyId = voucher.partyId,
+                            voucherId = voucher.id,
+                            date = voucher.date,
+                            debit = 0.0,
+                            credit = voucher.netAmount,
+                            narration = "Goods Receipt - unbilled liability",
+                            createdAt = System.currentTimeMillis()
+                        )
+                    )
+                }
+
+                "MATERIAL_NOTE" -> {
+                    ledgerList.add(
+                        LedgerEntry(
+                            id = UUID.randomUUID().toString(),
+                            accountHead = "Inventory Account (Destination)",
+                            voucherId = voucher.id,
+                            date = voucher.date,
+                            debit = voucher.taxableAmount,
+                            credit = 0.0,
+                            narration = "Material inward to destination",
+                            createdAt = System.currentTimeMillis()
+                        )
+                    )
+                    ledgerList.add(
+                        LedgerEntry(
+                            id = UUID.randomUUID().toString(),
+                            accountHead = "Inventory Account (Source)",
+                            voucherId = voucher.id,
+                            date = voucher.date,
+                            debit = 0.0,
+                            credit = voucher.taxableAmount,
+                            narration = "Material outward from source",
+                            createdAt = System.currentTimeMillis()
+                        )
+                    )
+                }
+
+                "REJECTION_NOTE" -> {
+                    ledgerList.add(
+                        LedgerEntry(
+                            id = UUID.randomUUID().toString(),
+                            accountHead = "Rejection Account",
+                            voucherId = voucher.id,
+                            date = voucher.date,
+                            debit = voucher.netAmount,
+                            credit = 0.0,
+                            narration = "Rejection entry",
+                            createdAt = System.currentTimeMillis()
+                        )
+                    )
+                    if (voucher.partyId != null) {
+                        val crHead = "Party: $partyDesc"
+                        ledgerList.add(
+                            LedgerEntry(
+                                id = UUID.randomUUID().toString(),
+                                accountHead = crHead,
+                                partyId = voucher.partyId,
+                                voucherId = voucher.id,
+                                date = voucher.date,
+                                debit = 0.0,
+                                credit = voucher.netAmount,
+                                narration = "Rejection - party credit",
+                                createdAt = System.currentTimeMillis()
+                            )
+                        )
+                    }
+                }
+
+                "PETTY_CASH" -> {
+                    ledgerList.add(
+                        LedgerEntry(
+                            id = UUID.randomUUID().toString(),
+                            accountHead = "Petty Cash Expenses",
+                            voucherId = voucher.id,
+                            date = voucher.date,
+                            debit = voucher.netAmount,
+                            credit = 0.0,
+                            narration = "Petty cash expense entry",
+                            createdAt = System.currentTimeMillis()
+                        )
+                    )
+                    ledgerList.add(
+                        LedgerEntry(
+                            id = UUID.randomUUID().toString(),
+                            accountHead = "Cash",
+                            voucherId = voucher.id,
+                            date = voucher.date,
+                            debit = 0.0,
+                            credit = voucher.netAmount,
+                            narration = "Petty cash payout",
+                            createdAt = System.currentTimeMillis()
+                        )
+                    )
+                }
             }
 
             if (shouldPostAccounts && ledgerList.isNotEmpty()) {
@@ -1253,7 +1375,7 @@ class AppRepository(private val db: AppDatabase) {
 
             // 4. Auto-register Cash or Bank trans
             val isReceipt = (resolvedVoucher.type == "RECEIPT" || resolvedVoucher.type == "SALE" || resolvedVoucher.type == "PURCHASE_RETURN")
-            val isPayment = (resolvedVoucher.type == "PAYMENT" || resolvedVoucher.type == "SALE_RETURN")
+            val isPayment = (resolvedVoucher.type == "PAYMENT" || resolvedVoucher.type == "SALE_RETURN" || resolvedVoucher.type == "PETTY_CASH")
             
             if (shouldPostAccounts && (isReceipt || isPayment) && resolvedVoucher.paymentMode != "CREDIT") {
                 val txType = if (isReceipt) "RECEIPT" else "PAYMENT"
@@ -1365,8 +1487,8 @@ class AppRepository(private val db: AppDatabase) {
 
         val purchaseVoucherIds = mutableListOf<String>()
         val purchaseCursor = db.openHelper.readableDatabase.query(
-            "SELECT id FROM vouchers WHERE type = ? AND status = ? AND partyId IS NOT NULL",
-            arrayOf("PURCHASE", "POSTED")
+            "SELECT id FROM vouchers WHERE type IN (?, ?) AND status = ? AND partyId IS NOT NULL",
+            arrayOf("PURCHASE", "GOODS_RECEIPT_NOTE", "POSTED")
         )
         purchaseCursor.use { cursor ->
             while (cursor.moveToNext()) {
@@ -1451,8 +1573,8 @@ class AppRepository(private val db: AppDatabase) {
             .mapValues { (_, productItems) ->
                 productItems.sumOf { item ->
                     when (vouchersById[item.voucherId]?.type) {
-                        "PURCHASE", "SALE_RETURN" -> item.qty
-                        "SALE", "PURCHASE_RETURN" -> -item.qty
+                        "PURCHASE", "SALE_RETURN", "GOODS_RECEIPT_NOTE" -> item.qty
+                        "SALE", "PURCHASE_RETURN", "DELIVERY_CHALLAN", "REJECTION_NOTE" -> -item.qty
                         else -> 0.0
                     }
                 }

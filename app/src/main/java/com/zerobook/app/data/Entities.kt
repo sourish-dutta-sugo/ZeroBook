@@ -136,7 +136,7 @@ data class Product(
 data class Voucher(
     @PrimaryKey val id: String, // UUID
     val voucherNo: String,
-    val type: String, // "SALE", "PURCHASE", "SALE_RETURN", "PURCHASE_RETURN", "RECEIPT", "PAYMENT", "DEBIT_NOTE", "CREDIT_NOTE"
+    val type: String, // "SALE", "PURCHASE", "SALE_RETURN", "PURCHASE_RETURN", "RECEIPT", "PAYMENT", "DEBIT_NOTE", "CREDIT_NOTE", "QUOTATION", "DELIVERY_CHALLAN", "JOURNAL", "BILLS_RECEIVABLE", "BILLS_PAYABLE", "INCOME", "EXPENSE", "INQUIRY", "SALES_ORDER", "PURCHASE_ORDER", "GOODS_RECEIPT_NOTE", "MATERIAL_NOTE", "REJECTION_NOTE", "PETTY_CASH", "PROFORMA"
     val date: Long,
     val partyId: String?,
     val narration: String,

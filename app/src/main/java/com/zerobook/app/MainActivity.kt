@@ -671,9 +671,10 @@ private fun ZeroBookNavHost(
                 onEditVoucher = { id -> navController.navigate(newVoucherRoute(id)) },
                 onCreateSaleFromVoucher = { sourceVoucherId ->
                     val sourceVoucher = viewModel.getVoucherById(sourceVoucherId)
+                    val targetType = if (sourceVoucher?.type in setOf("PURCHASE_ORDER", "GOODS_RECEIPT_NOTE")) "PURCHASE" else "SALE"
                     viewModel.setVoucherPrefillRequest(
                         AppViewModel.VoucherPrefillRequest(
-                            voucherType = "SALE",
+                            voucherType = targetType,
                             partyId = sourceVoucher?.partyId,
                             invoiceId = null,
                             amount = null,
