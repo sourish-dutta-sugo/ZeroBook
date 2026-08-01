@@ -1,42 +1,42 @@
-# ZeroBook 📒
+﻿# ZeroBook ðŸ“’
 
 **Record. Transact. Grow.**
 
-ZeroBook is a professional retail accounting and GST invoicing app built for small and medium Indian retailers — kirana stores, small shops, and traders who currently rely on pen-and-paper ledgers or oversized desktop accounting software that doesn't fit their workflow.
+ZeroBook is a professional retail accounting and GST invoicing app built for small and medium Indian retailers â€” kirana stores, small shops, and traders who currently rely on pen-and-paper ledgers or oversized desktop accounting software that doesn't fit their workflow.
 
 This repository contains the **native Android edition** of ZeroBook, built entirely with Kotlin and Jetpack Compose.
 
 ---
 
-## 🎯 Why ZeroBook
+## ðŸŽ¯ Why ZeroBook
 
-Most small Indian retailers fall into a gap: too small for Tally Prime / desktop ERP, but too serious about their business for a plain notebook. They need GST-compliant billing, party (customer/supplier) ledgers, stock tracking, and basic financial reports — without needing an accountant on payroll or a steep learning curve.
+Most small Indian retailers fall into a gap: too small for Tally Prime / desktop ERP, but too serious about their business for a plain notebook. They need GST-compliant billing, party (customer/supplier) ledgers, stock tracking, and basic financial reports â€” without needing an accountant on payroll or a steep learning curve.
 
 ZeroBook targets this segment specifically:
 - **Who:** Small retailers, traders, and shop owners across India, mostly first-time digital-accounting adopters.
 - **Why:** GST compliance is mandatory, but existing tools are either too complex (Tally) or too basic (plain billing apps with no ledger/accounting depth).
-- **How:** A single, lightweight mobile app that combines invoicing, double-entry-style ledgers, inventory, and reports in one place — designed mobile-first, usable one-handed in a shop.
+- **How:** A single, lightweight mobile app that combines invoicing, double-entry-style ledgers, inventory, and reports in one place â€” designed mobile-first, usable one-handed in a shop.
 
 ---
 
-## ✨ Core Features
+## âœ¨ Core Features
 
-- **GST Billing & Invoicing** — Create Sale, Purchase, Sale Return, Purchase Return, Receipt, Payment, Debit Note, and Credit Note vouchers with automatic CGST/SGST/IGST calculation based on intrastate/interstate detection.
-- **Quick Sale** — A fast, simplified billing flow for high-frequency counter sales.
-- **Party & Ledger Management** — Track customers and suppliers with running balances, financial-year-wise ledger accounts, and bills receivable.
-- **Inventory / Products** — Product catalog with HSN code lookup, stock tracking, and stock reports.
-- **Bank & Cash Tracking** — Record bank/cash transactions and reconcile against vouchers.
-- **Expenses Module** — Log and categorize business expenses separately from trading vouchers.
-- **Barcode Scanning & OCR** — CameraX + ML Kit-powered barcode scanning and text recognition (e.g. for scanning purchase bills/products).
-- **Reports** — Business and stock-level reports for day-to-day decision-making.
-- **Email Integration** — Send invoices/reports directly via an in-app email composer with scheduled reminders (WorkManager).
-- **Multi-Theme UI** — 5 switchable color themes (Beach, Blue, Green, and more), built on Material 3.
-- **Financial Year Management** — Data is partitioned and balanced by financial year, with audit logs for year transitions.
-- **First-Run Setup** — A guided onboarding/setup screen for business profile details (GSTIN, PAN, bank info) before the first invoice is created.
+- **GST Billing & Invoicing** â€” Create Sale, Purchase, Sale Return, Purchase Return, Receipt, Payment, Debit Note, and Credit Note vouchers with automatic CGST/SGST/IGST calculation based on intrastate/interstate detection.
+- **Quick Sale** â€” A fast, simplified billing flow for high-frequency counter sales.
+- **Party & Ledger Management** â€” Track customers and suppliers with running balances, financial-year-wise ledger accounts, and bills receivable.
+- **Inventory / Products** â€” Product catalog with HSN code lookup, stock tracking, and stock reports.
+- **Bank & Cash Tracking** â€” Record bank/cash transactions and reconcile against vouchers.
+- **Expenses Module** â€” Log and categorize business expenses separately from trading vouchers.
+- **Barcode Scanning & OCR** â€” CameraX + ML Kit-powered barcode scanning and text recognition (e.g. for scanning purchase bills/products).
+- **Reports** â€” Business and stock-level reports for day-to-day decision-making.
+- **Email Integration** â€” Send invoices/reports directly via an in-app email composer with scheduled reminders (WorkManager).
+- **Multi-Theme UI** â€” 5 switchable color themes (Beach, Blue, Green, and more), built on Material 3.
+- **Financial Year Management** â€” Data is partitioned and balanced by financial year, with audit logs for year transitions.
+- **First-Run Setup** â€” A guided onboarding/setup screen for business profile details (GSTIN, PAN, bank info) before the first invoice is created.
 
 ---
 
-## 🛠 Tech Stack
+## ðŸ›  Tech Stack
 
 | Layer | Technology |
 |---|---|
@@ -54,41 +54,41 @@ ZeroBook targets this segment specifically:
 | Build System | Gradle (Kotlin DSL), AGP 9.1.1, KSP |
 | Testing | JUnit, Espresso, Robolectric, Roborazzi (screenshot testing) |
 
-**Minimum SDK:** 24 (Android 7.0) · **Target SDK:** 35 · **Compile SDK:** 36
+**Minimum SDK:** 24 (Android 7.0) Â· **Target SDK:** 35 Â· **Compile SDK:** 36
 
-> **Note:** This is the original Android-only codebase. ZeroBook is currently being rebuilt as a **Kotlin Multiplatform (KMP) + Compose Multiplatform** project to additionally support Android tablets, iOS, Desktop (Windows/macOS/Linux), and Web — using SQLDelight in place of Room for a shared, multiplatform-friendly database layer. This repository represents the stable Android-only reference implementation that the multiplatform rebuild is targeting for feature parity.
+> **Note:** This is the original Android-only codebase. ZeroBook is currently being rebuilt as a **Kotlin Multiplatform (KMP) + Compose Multiplatform** project to additionally support Android tablets, iOS, Desktop (Windows/macOS/Linux), and Web â€” using SQLDelight in place of Room for a shared, multiplatform-friendly database layer. This repository represents the stable Android-only reference implementation that the multiplatform rebuild is targeting for feature parity.
 
 ---
 
-## 📂 Project Structure
+## ðŸ“‚ Project Structure
 
 ZeroBook---Only Android/
 
-├── app/
+â”œâ”€â”€ app/
 
-│   └── src/main/java/com/zerobook/app/
+â”‚   â””â”€â”€ src/main/java/com/zerobook/app/
 
-│       ├── data/         # Room entities, DAOs, repository, migrations, GST/financial-year utils
+â”‚       â”œâ”€â”€ data/         # Room entities, DAOs, repository, migrations, GST/financial-year utils
 
-│       ├── services/     # Invoice generation, CSV transfer, export storage, email composer
+â”‚       â”œâ”€â”€ services/     # Invoice generation, CSV transfer, export storage, email composer
 
-│       ├── ui/
+â”‚       â”œâ”€â”€ ui/
 
-│       │   ├── screens/  # All Compose screens (Dashboard, Vouchers, Parties, Products, etc.)
+â”‚       â”‚   â”œâ”€â”€ screens/  # All Compose screens (Dashboard, Vouchers, Parties, Products, etc.)
 
-│       │   └── theme/    # Multi-theme system (Beach, Blue, Green, ...), Material 3 styling
+â”‚       â”‚   â””â”€â”€ theme/    # Multi-theme system (Beach, Blue, Green, ...), Material 3 styling
 
-│       └── utils/        # HSN lookup, file picker, helpers
+â”‚       â””â”€â”€ utils/        # HSN lookup, file picker, helpers
 
-├── stores/            # Store and marketplace listing assets (icon, feature graphic)
+â”œâ”€â”€ stores/            # Store and marketplace listing assets (icon, feature graphic)
 
-├── gradle/                # Version catalog (libs.versions.toml), wrapper
+â”œâ”€â”€ gradle/                # Version catalog (libs.versions.toml), wrapper
 
-└── build.gradle.kts / settings.gradle.kts
+â””â”€â”€ build.gradle.kts / settings.gradle.kts
 
 ---
 
-## 🚀 Getting Started
+## ðŸš€ Getting Started
 
 ### Prerequisites
 - Android Studio (latest stable)
@@ -97,7 +97,7 @@ ZeroBook---Only Android/
 
 ### Build & Run
 ```bash
-git clone https://github.com/<your-username>/ZeroBook.git
+git clone https://github.com/sourish-dutta-sugo/ZeroBook.git
 cd ZeroBook
 ./gradlew assembleDebug
 ```
@@ -108,7 +108,7 @@ Copy `.env.example` to `.env` and fill in any required secrets (e.g., signing ke
 
 ---
 
-## 🗺 Roadmap
+## ðŸ—º Roadmap
 
 - [ ] Full Kotlin Multiplatform rebuild (Android, iOS, Desktop, Web) sharing one business-logic/database layer via SQLDelight
 - [ ] Tally-style keyboard shortcuts for desktop
@@ -121,9 +121,11 @@ Development follows a research-then-build cadence: feature parity is mapped from
 
 ---
 
-## 🤝 Contributing
+## ðŸ¤ Contributing
 
-This project is under active solo development. Issues and feature suggestions are welcome — please open a GitHub Issue describing the use case (small-retailer workflows are the priority lens for any new feature).
+This project is under active solo development. Issues and feature suggestions are welcome â€” please open a GitHub Issue describing the use case (small-retailer workflows are the priority lens for any new feature).
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the branch model, commit format, and pull request checklist.
 
 
 # ZeroBook License
@@ -162,3 +164,4 @@ This software is provided "as is", without warranty of any kind, express or impl
 ## Summary (Plain English)
 
 You're welcome to read, learn from, fork, and contribute to this project. You may NOT take this app, rename it, and release it as your own. Credit to the original author must always remain intact.
+
