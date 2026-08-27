@@ -2,6 +2,7 @@ package com.zerobook.app.data
 
 import java.text.DecimalFormat
 import java.text.SimpleDateFormat
+import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
@@ -77,7 +78,50 @@ object Utils {
     }
 
     fun formatDate(timestamp: Long): String {
-        return SimpleDateFormat("dd-MM-yyyy", Locale.getDefault()).format(Date(timestamp))
+        return SimpleDateFormat("dd/MM/yyyy", Locale.ENGLISH).format(Date(timestamp))
+    }
+
+    fun parseShorthandDate(input: String): Long? {
+        val trimmed = input.trim()
+        if (trimmed.isEmpty()) return null
+        val currentYear = Calendar.getInstance().get(Calendar.YEAR)
+        val normalized = trimmed.replace(".", "/").replace("-", "/")
+        val yearSuffix = "/$currentYear"
+        val tryPatterns: (String) -> Long? = { value ->
+            val candidates = listOf(
+                "dd/MM/yyyy" to value,
+                "d/M/yyyy" to value,
+                "dd/MM/yy" to value,
+                "M/d/yy" to value,
+                "MM/dd/yyyy" to value,
+                "M/d/yyyy" to value,
+                "dd/MM" to value,
+                "d/M" to value,
+                "MM/dd" to value,
+                "M/d" to value,
+                "dd/MM" to value + yearSuffix,
+                "d/M" to value + yearSuffix,
+                "MM/dd" to value + yearSuffix,
+                "M/d" to value + yearSuffix
+            )
+            var result: Long? = null
+            for ((pattern, v) in candidates) {
+                val parsed = runCatching {
+                    SimpleDateFormat(pattern, Locale.ENGLISH).parse(v)?.time
+                }.getOrNull() ?: continue
+                val cal = Calendar.getInstance().apply { timeInMillis = parsed }
+                val day = cal.get(Calendar.DAY_OF_MONTH)
+                val month = cal.get(Calendar.MONTH) + 1
+                val maxDay = cal.getActualMaximum(Calendar.DAY_OF_MONTH)
+                if (day in 1..maxDay && month in 1..12) {
+                    result = parsed
+                    break
+                }
+            }
+            result
+        }
+        tryPatterns(normalized)?.let { return it }
+        return null
     }
 
     fun numberToWords(number: Double): String {

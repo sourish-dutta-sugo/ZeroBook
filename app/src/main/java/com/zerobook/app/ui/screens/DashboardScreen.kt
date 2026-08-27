@@ -352,12 +352,12 @@ fun DashboardScreen(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(Color(0xFF1A5C4B))
+.background(AppColors.screenBg)
                     .padding(
-                        start = if (isTablet) 24.dp else 20.dp,
-                        end = if (isTablet) 24.dp else 20.dp,
-                        top = 20.dp,
-                        bottom = 24.dp
+                        start = if (isTablet) 8.dp else 4.dp,
+                        end = if (isTablet) 8.dp else 4.dp,
+                        top = 8.dp,
+                        bottom = 12.dp
                     )
             ) {
                 Column {
@@ -370,7 +370,7 @@ fun DashboardScreen(
                             text = "ZeroBook",
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color(0x99FFFFFF),
+color = AppColors.primary,
                             letterSpacing = 2.sp
                         )
                         Row(
@@ -380,28 +380,28 @@ fun DashboardScreen(
                             Box(
                                 modifier = Modifier
                                     .size(32.dp)
-                                    .background(Color(0x1FFFFFFF), RoundedCornerShape(10.dp)),
+                                    .background(AppColors.primaryLight, RoundedCornerShape(10.dp)),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.Receipt,
                                     contentDescription = "Notifications",
-                                    tint = Color.White,
+tint = AppColors.primary,
                                     modifier = Modifier.size(16.dp)
                                 )
                             }
                             Box(
                                 modifier = Modifier
                                     .size(36.dp)
-                                    .background(Color(0x26FFFFFF), CircleShape)
-                                    .border(2.dp, Color(0x40FFFFFF), CircleShape),
+                                    .background(AppColors.primaryLight, CircleShape)
+                                    .border(1.dp, AppColors.border, CircleShape),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
                                     text = headerState.businessName.take(2).uppercase().ifBlank { "ZB" },
                                     fontSize = 14.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = Color.White
+fontWeight = FontWeight.SemiBold,
+                                    color = AppColors.primary
                                 )
                             }
                         }
@@ -410,25 +410,26 @@ fun DashboardScreen(
                     Spacer(modifier = Modifier.height(12.dp))
 
                     Text(
-                        text = "Hello ${headerState.businessName.ifBlank { "there" }}",
+text = "Hello ${headerState.businessName.ifBlank { "there" }}",
                         fontSize = 22.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color.White
+                        color = AppColors.textPrimary
                     )
                     Text(
                         text = "What would you like to do today?",
                         fontSize = 13.sp,
-                        color = Color(0xFFA7B5B0)
+                        color = AppColors.textSecondary
                     )
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // Gold Balance Card
+                    // Balance card
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(18.dp),
-                        colors = CardDefaults.cardColors(containerColor = Color(0xFFC8943A)),
-                        elevation = CardDefaults.cardElevation(4.dp)
+colors = CardDefaults.cardColors(containerColor = AppColors.cardBg),
+                        border = BorderStroke(1.dp, AppColors.border),
+                        elevation = CardDefaults.cardElevation(0.dp)
                     ) {
                         Row(
                             modifier = Modifier
@@ -441,33 +442,33 @@ fun DashboardScreen(
                                 Text(
                                     text = "Cash & Bank balance",
                                     fontSize = 12.sp,
-                                    color = Color(0x99FFFFFF),
+color = AppColors.textSecondary,
                                     fontWeight = FontWeight.Medium
                                 )
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Text(
                                     text = Utils.formatIndianCurrency(balanceSnapshot.cashBalance + balanceSnapshot.bankBalance),
                                     fontSize = 28.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color.White
+fontWeight = FontWeight.Bold,
+                                    color = AppColors.textPrimary
                                 )
                                 Spacer(modifier = Modifier.height(2.dp))
                                 Text(
                                     text = "FY ${headerState.fyLabel} \u00B7 Updated today",
                                     fontSize = 11.sp,
-                                    color = Color(0x99FFFFFF)
+                                    color = AppColors.textTertiary
                                 )
                             }
                             Box(
                                 modifier = Modifier
                                     .size(48.dp)
-                                    .background(Color(0x26FFFFFF), CircleShape),
+                                    .background(AppColors.primaryLight, CircleShape),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.Receipt,
                                     contentDescription = null,
-                                    tint = Color.White,
+tint = AppColors.primary,
                                     modifier = Modifier.size(24.dp)
                                 )
                             }

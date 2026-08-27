@@ -13,9 +13,9 @@ object AppColors {
     val tableHeaderBg get() = theme.accentLight
     val tableRowEven get() = theme.backgroundSecondary
     val tableRowOdd get() = theme.backgroundPrimary
-    val bottomBarBg get() = Color(0xFFFFFFFF)
+    val bottomBarBg get() = theme.backgroundSecondary
     val topBarBg get() = theme.backgroundSecondary
-    val divider = Color(0xFFE5E7EB)
+    val divider = Color(0xFFE0E4EA)
     val shimmerBg get() = theme.accentLight.copy(alpha = 0.45f)
 
     val textPrimary get() = theme.textPrimary
@@ -24,16 +24,16 @@ object AppColors {
     val textHint get() = theme.textTertiary
     val textOnPrimary = Color(0xFFFFFFFF)
     val textOnDark = Color(0xFFFFFFFF)
-    val textDisabled = Color(0xFFBBBBBB)
+    val textDisabled = Color(0xFFB0B0B0)
 
     val primary get() = theme.accentPrimary
     val primaryDark get() = theme.accentPrimary.copy(alpha = 0.85f)
     val primaryLight get() = theme.accentLight
     val primaryText get() = theme.accentPrimary
 
-    val border = Color(0xFFE5E7EB)
+    val border = Color(0xFFE0E4EA)
     val borderFocus get() = theme.accentPrimary
-    val borderLight = Color(0xFFF7F8FA)
+    val borderLight = Color(0xFFF3F2EF)
 
     val debit = Color(0xFFE24B4A)
     val debitBg = Color(0xFFFEF0F0)
@@ -43,26 +43,26 @@ object AppColors {
     val gold = Color(0xFFC8943A)
     val goldLight = Color(0xFFF0C060)
 
-    val badgeSaleBg = Color(0xFFE8F8F0)
-    val badgeSaleText = Color(0xFF22A06B)
-    val badgePurchaseBg = Color(0xFFFEF0F0)
-    val badgePurchaseText = Color(0xFFE24B4A)
-    val badgeReceiptBg = Color(0xFFFFF7E6)
-    val badgeReceiptText = Color(0xFFD97706)
-    val badgePaymentBg = Color(0xFFEEF2FF)
-    val badgePaymentText = Color(0xFF6366F1)
-    val badgeReturnBg = Color(0xFFFEF0F0)
-    val badgeReturnText = Color(0xFFE24B4A)
-    val badgeOverdueBg = Color(0xFFFEF0F0)
-    val badgeOverdueText = Color(0xFFE24B4A)
-    val badgePartialBg = Color(0xFFFFF7E6)
-    val badgePartialText = Color(0xFFD97706)
-    val badgePaidBg = Color(0xFFE8F8F0)
-    val badgePaidText = Color(0xFF22A06B)
+    val badgeSaleBg = Badge.saleBg
+    val badgeSaleText = Badge.saleText
+    val badgePurchaseBg = Badge.purchaseBg
+    val badgePurchaseText = Badge.purchaseText
+    val badgeReceiptBg = Badge.receiptBg
+    val badgeReceiptText = Badge.receiptText
+    val badgePaymentBg = Badge.paymentBg
+    val badgePaymentText = Badge.paymentText
+    val badgeReturnBg = Badge.returnBg
+    val badgeReturnText = Badge.returnText
+    val badgeOverdueBg = Badge.overdueBg
+    val badgeOverdueText = Badge.overdueText
+    val badgePartialBg = Badge.partialBg
+    val badgePartialText = Badge.partialText
+    val badgePaidBg = Badge.paidBg
+    val badgePaidText = Badge.paidText
 
     val inputText get() = theme.textPrimary
     val inputPlaceholder get() = theme.textTertiary
-    val inputBorder = Color(0xFFE5E7EB)
+    val inputBorder = Color(0xFFE0E4EA)
     val inputBorderFocus get() = theme.accentPrimary
     val labelText get() = theme.textSecondary
 

@@ -303,7 +303,7 @@ object EmailReminderScheduler {
         val latestBill = bills.maxByOrNull { it.billDate }
         val attachment = latestBill?.voucherId?.let { voucherId ->
             runCatching {
-                val bundle = InvoiceGenerator.buildRenderBundle(context, voucherId) ?: return@runCatching null
+                val bundle = InvoiceGenerator.buildRenderBundleWithTypeAware(context, voucherId) ?: return@runCatching null
                 val pdf = InvoiceGenerator.renderBundleToPdf(context, bundle)
                 FileProvider.getUriForFile(context, context.packageName + ".provider", pdf)
             }.getOrNull()
@@ -746,7 +746,7 @@ class DueReminderWorker(
         if (voucherId.isBlank()) return Result.success()
 
         return runCatching {
-            val bundle = InvoiceGenerator.buildRenderBundle(applicationContext, voucherId) ?: return Result.success()
+            val bundle = InvoiceGenerator.buildRenderBundleWithTypeAware(applicationContext, voucherId) ?: return Result.success()
             val balanceDue = bundle.document.paymentSnapshot.balanceDue.coerceAtLeast(0.0)
             if (balanceDue <= 0.0) return Result.success()
 

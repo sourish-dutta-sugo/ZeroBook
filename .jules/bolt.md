@@ -1,5 +1,0 @@
-# Bolt's Performance Journal ⚡
-
-## 2026-07-17 - [Avoiding Sequence & Intermediate Allocations in Interactive Android Flows]
-**Learning:** In interactive typing/filtering flows (such as `HsnLookup.suggest` or auto-completes), using Kotlin's default Sequence/Stream operations like `.asSequence().filter { ... }.map { ... }.sortedBy { ... }` causes high object allocation overhead per keystroke (e.g. `Iterator`, `Pair`, array copies, and intermediate lists). In a mobile app with thousands of items, this triggers frequent Garbage Collection (GC) pauses, dropping UI frames and causing micro-stuttering on lower-end devices.
-**Action:** For performance-critical interactive flows, replace stream/sequence chaining with a single-pass `for (i in 0 until list.size)` index-based loop. Index-based loops completely avoid allocating an `Iterator` instance, and keeping track of the running best match achieves O(N) runtime and O(1) memory allocation. Additionally, implement an O(1) early-exit if an exact match is found, completely halting iteration and returning instantly.

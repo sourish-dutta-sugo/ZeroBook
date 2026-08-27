@@ -18,6 +18,8 @@ import com.zerobook.app.data.DEFAULT_TERMS_AND_CONDITIONS
 import com.zerobook.app.data.Party
 import com.zerobook.app.data.Voucher
 import com.zerobook.app.data.VoucherItem
+import com.zerobook.app.services.documents.DocumentGeneratorRegistry
+import com.zerobook.app.services.documents.DocumentType
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -217,6 +219,59 @@ object InvoiceGenerator {
         )
     }
 
+    /**
+     * Build a render bundle using the new DocumentGenerator architecture.
+     * This method routes to the correct document-specific generator based on voucher type.
+     * 
+     * @param context Android context
+     * @param voucherId The voucher ID to generate document for
+     * @return InvoiceRenderBundle with document-type-aware HTML, or null if data loading fails
+     */
+    suspend fun buildRenderBundleWithTypeAware(
+        context: Context,
+        voucherId: String
+    ): InvoiceRenderBundle? {
+        val documentData = loadInvoiceDocumentData(context, voucherId) ?: return null
+        val document = buildInvoiceDocument(documentData)
+        validateInvoiceDocument(document)
+        
+        // Get the document type from voucher type
+        val documentType = DocumentType.fromVoucherType(documentData.voucher.type)
+        
+        // Check if we have a registered generator for this document type
+        if (DocumentGeneratorRegistry.hasGenerator(documentType)) {
+            // Use the document-specific generator
+            val generator = DocumentGeneratorRegistry.getGenerator(documentType)
+            val html = generator.generateHtml(
+                voucher = documentData.voucher,
+                items = documentData.items,
+                business = documentData.profile,
+                party = documentData.party,
+                extras = documentData.extras
+            )
+            val fileName = generator.getExportFileName(documentData.voucher, documentData.voucher.financialYearCode)
+            val cacheKey = sha256("${document.voucherId}|${document.invoiceNumber}|$html")
+            
+            return InvoiceRenderBundle(
+                document = document.copy(displayTitle = generator.getDocumentTitle(documentData.voucher, documentData.profile)),
+                html = html,
+                exportFileName = "$fileName.pdf",
+                cacheKey = cacheKey
+            )
+        } else {
+            // Fall back to legacy invoice generator for unimplemented document types
+            val html = buildInvoiceHtml(document)
+            val fileName = "${buildInvoiceFileStem(document)}.pdf"
+            val cacheKey = sha256("${document.voucherId}|${document.invoiceNumber}|$html")
+            return InvoiceRenderBundle(
+                document = document,
+                html = html,
+                exportFileName = fileName,
+                cacheKey = cacheKey
+            )
+        }
+    }
+
     fun buildInvoiceHtml(
         voucher: Voucher,
         items: List<VoucherItem>,
@@ -225,6 +280,12 @@ object InvoiceGenerator {
         additionalCharges: List<AdditionalCharge> = emptyList(),
         renderExtras: VoucherRenderExtras = VoucherRenderExtras()
     ): String {
+        val documentType = DocumentType.fromVoucherType(voucher.type)
+        if (DocumentGeneratorRegistry.hasGenerator(documentType)) {
+            val generator = DocumentGeneratorRegistry.getGenerator(documentType)
+            return generator.generateHtml(voucher, items, business, party, renderExtras)
+        }
+
         val totals = InvoiceTotals(
             totalQuantity = items.sumOf { it.qty },
             taxableAmount = voucher.taxableAmount,
@@ -288,7 +349,7 @@ object InvoiceGenerator {
         onComplete: (File?, Voucher?) -> Unit
     ) {
         invoiceScope.launch {
-            val bundle = buildRenderBundle(context, voucherId)
+            val bundle = buildRenderBundleWithTypeAware(context, voucherId)
             if (bundle == null) {
                 withContext(Dispatchers.Main) { onComplete(null, null) }
                 return@launch
@@ -550,14 +611,6 @@ object InvoiceGenerator {
             }
         }
         val gstRows = if (isDraftDocument) "" else buildItemGstRows(document, isIntrastate)
-        val spacerRows = (1..6).joinToString("") { index ->
-            val rowClass = if (index == 1) "blank-row blank-row-first" else "blank-row"
-            if (isChallan) {
-                "<tr class='$rowClass'><td></td><td></td><td></td><td></td><td></td></tr>"
-            } else {
-                "<tr class='$rowClass'><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>"
-            }
-        }
         val declarationHtml = buildDeclarationHtml(business.termsAndConditions.ifBlank { DEFAULT_TERMS_AND_CONDITIONS })
         val itemHeaderHtml = if (isChallan) {
             """
@@ -616,8 +669,12 @@ object InvoiceGenerator {
           <meta name='viewport' content='width=device-width, initial-scale=1.0'/>
           <style>
             * { margin:0; padding:0; box-sizing:border-box; }
-            body { font-family:Arial,Helvetica,sans-serif; font-size:11px; color:#111111; background:#ffffff; min-width:920px; }
-            .page { width:920px; margin:0 auto; padding:14px 18px 18px 18px; background:#ffffff; }
+            body { font-family:Arial,Helvetica,sans-serif; font-size:11px; color:#111111; background:#ffffff; }
+            @page { 
+              size: A4 portrait; 
+              margin: 10mm 12mm;
+            }
+            .page { width:100%; max-width:794px; margin:0 auto; padding:14px 18px 18px 18px; background:#ffffff; }
             table { width:100%; border-collapse:collapse; table-layout:fixed; }
             td, th { border:1px solid #000000; padding:5px 6px; vertical-align:top; overflow-wrap:anywhere; word-break:break-word; }
             .title { text-align:center; font-size:15px; font-weight:700; letter-spacing:0.5px; padding:4px 0 12px 0; }
@@ -645,14 +702,20 @@ object InvoiceGenerator {
             .meta-table { width:100%; border-collapse:collapse; table-layout:fixed; }
             .meta-table td, .meta-table th { border:1px solid #000000; padding:6px 8px; vertical-align:top; }
             .meta-table .wrap-cell { word-wrap:break-word; overflow-wrap:break-word; }
-            .blank-row td { height:20px; border-top:none; border-bottom:none; border-left:1px solid #000000; border-right:1px solid #000000; }
-            .blank-row-first td { border-top:1px solid #000000; }
             .terms-line { display:block; line-height:1.5; }
             .signatory { vertical-align:bottom; text-align:right; min-height:80px; }
             .signatory .for-line { font-size:11px; font-weight:700; margin-bottom:22px; }
             .summary-wrap { padding:0; }
             .summary-wrap > table { width:100%; border-collapse:collapse; table-layout:fixed; }
-            @media print { body { -webkit-print-color-adjust:exact; } }
+            .page-break { page-break-before:always; }
+            .no-break-inside { page-break-inside:avoid; }
+            .continuation-header { border-bottom:1px solid #000000; padding:4px 0; margin-bottom:8px; font-size:10px; }
+            .page-number { text-align:center; font-size:9px; color:#666666; margin-top:8px; }
+            @media print { 
+              body { -webkit-print-color-adjust:exact; }
+              .page-break { page-break-before:always; }
+              .no-break-inside { page-break-inside:avoid; }
+            }
           </style>
         </head>
         <body>
@@ -688,7 +751,6 @@ object InvoiceGenerator {
               $itemRows
               $additionalChargeRows
               $gstRows
-              $spacerRows
             </table>
             $summarySectionHtml
             <table>

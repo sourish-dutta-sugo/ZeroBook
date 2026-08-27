@@ -365,7 +365,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     fun getItemsForVoucher(voucherId: String) = repository.getItemsForVoucher(voucherId)
 
     suspend fun getInvoiceRenderBundle(voucherId: String): InvoiceGenerator.InvoiceRenderBundle? =
-        InvoiceGenerator.buildRenderBundle(getApplication(), voucherId)
+        InvoiceGenerator.buildRenderBundleWithTypeAware(getApplication(), voucherId)
 
     suspend fun getSaleVoucherReferenceFields(voucherId: String): Pair<String, String> {
         val db = AppDatabase.getDatabase(getApplication())

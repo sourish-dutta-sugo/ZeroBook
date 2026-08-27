@@ -24,6 +24,7 @@ import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -38,6 +39,7 @@ import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.Description
@@ -54,11 +56,14 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -99,6 +104,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import com.google.mlkit.vision.common.InputImage
@@ -1585,6 +1591,9 @@ fun NewVoucherScreen(
     var selectedType by remember { mutableStateOf("SALE") }
     var voucherNo by remember { mutableStateOf("") }
     var voucherDate by remember { mutableStateOf(System.currentTimeMillis()) }
+    var dateText by remember { mutableStateOf(Utils.formatDate(System.currentTimeMillis())) }
+    var isDateEditing by remember { mutableStateOf(false) }
+    var voucherNoTouched by remember { mutableStateOf(false) }
     var selectedParty by remember { mutableStateOf<Party?>(null) }
     var paymentMode by remember { mutableStateOf("CASH") }
     var partialAmountPaidText by remember { mutableStateOf("") }
@@ -1642,6 +1651,7 @@ fun NewVoucherScreen(
                 formStep = if (voucher.type == "SALE" || voucher.type == "PURCHASE") 3 else 1
                 voucherNo = voucher.voucherNo
                 voucherDate = voucher.date
+                dateText = Utils.formatDate(voucher.date)
                 selectedParty = parties.find { it.id == voucher.partyId }
                 paymentMode = voucher.paymentMode
                 narration = voucher.narration ?: ""
@@ -1736,9 +1746,10 @@ fun NewVoucherScreen(
         }
     }
 
-    // Populate dynamic number on type/date change
-    LaunchedEffect(selectedType, voucherDate) {
-        if (!isEditMode) {
+// Keep a sensible voucher number in the background until the user edits it.
+    // There is intentionally no manual/automatic toggle: the field is always editable.
+    LaunchedEffect(selectedType, voucherDate, voucherNoTouched) {
+        if (!isEditMode && !voucherNoTouched) {
             val nextNo = viewModel.generateNextVoucherNo(selectedType, voucherDate)
             voucherNo = nextNo
         }
@@ -1864,6 +1875,8 @@ fun NewVoucherScreen(
             SimpleDateFormat("dd-MMM-yyyy", Locale.ENGLISH).parse(value)?.time
         }.getOrNull()
     }
+
+    fun parseShorthandDate(input: String): Long? = Utils.parseShorthandDate(input)
 
     fun showDatePicker(
         currentValue: String,
@@ -2066,7 +2079,7 @@ fun NewVoucherScreen(
                 android.widget.Toast.makeText(context, "Cannot save: Part payment must be less than net total.", android.widget.Toast.LENGTH_LONG).show()
             } else if (paymentMode == "CHEQUE" && (chequeNo.isBlank() || bankName.isBlank())) {
                 android.widget.Toast.makeText(context, "Cannot save: Main Cheque details are missing!", android.widget.Toast.LENGTH_LONG).show()
-            } else if (voucherNo.isBlank()) {
+            } else if (voucherNo.trim().isBlank()) {
                 android.widget.Toast.makeText(context, "Cannot save: Voucher Number is missing!", android.widget.Toast.LENGTH_LONG).show()
             } else if (selectedType in partyRequiredTypes && selectedParty == null) {
                 android.widget.Toast.makeText(context, "Cannot save: Party is required for this voucher type!", android.widget.Toast.LENGTH_LONG).show()
@@ -2091,7 +2104,7 @@ fun NewVoucherScreen(
             viewModel.saveJournalVoucher(
                 voucher = Voucher(
                     id = finalId,
-                    voucherNo = voucherNo,
+                    voucherNo = voucherNo.trim(),
                     type = "JOURNAL",
                     date = voucherDate,
                     partyId = null,
@@ -2133,7 +2146,7 @@ fun NewVoucherScreen(
             }
             val voucherObj = Voucher(
                 id = finalId,
-                voucherNo = voucherNo,
+                voucherNo = voucherNo.trim(),
                 type = selectedType,
                 date = voucherDate,
                 partyId = selectedParty?.id,
@@ -2511,13 +2524,125 @@ fun NewVoucherScreen(
                         .padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    RetailTextField(
-                        value = Utils.formatDate(voucherDate),
-                        onValueChange = {},
-                        label = "Date",
-                        readOnly = true,
-                        modifier = Modifier.fillMaxWidth()
+                    Text(
+                        text = "Voucher identity",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = AppColors.textTertiary,
+                        letterSpacing = 0.8.sp
                     )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        RetailTextField(
+                            value = voucherNo,
+                            onValueChange = {
+                                voucherNoTouched = true
+                                voucherNo = it
+                            },
+                            label = "Voucher Number",
+                            placeholder = "e.g. JNL-00012",
+                            modifier = Modifier.weight(1f)
+                        )
+                        if (isDateEditing) {
+                            val dateFocusRequester = remember { FocusRequester() }
+                            val focusManager = LocalFocusManager.current
+                            LaunchedEffect(Unit) {
+                                dateFocusRequester.requestFocus()
+                            }
+                            RetailTextField(
+                                value = dateText,
+                                onValueChange = { newText ->
+                                    dateText = newText
+                                    val parsed = parseShorthandDate(newText)
+                                    if (parsed != null) {
+                                        voucherDate = parsed
+                                    }
+                                },
+                                label = "Date",
+                                placeholder = "dd/MM/yyyy",
+                                readOnly = false,
+                                trailingIcon = {
+                                    Icon(
+                                        Icons.Default.DateRange,
+                                        contentDescription = "Pick date",
+                                        modifier = Modifier.clickable {
+                                            showDatePicker(voucherDate.toString()) { newDate ->
+                                                voucherDate = newDate
+                                                dateText = Utils.formatDate(newDate)
+                                                isDateEditing = false
+                                                focusManager.clearFocus()
+                                            }
+                                        }
+                                    )
+                                },
+                                keyboardOptions = KeyboardOptions(
+                                    keyboardType = KeyboardType.Phone,
+                                    imeAction = ImeAction.Done
+                                ),
+                                keyboardActions = KeyboardActions(
+                                    onDone = {
+                                        val parsed = parseShorthandDate(dateText)
+                                        if (parsed != null) {
+                                            voucherDate = parsed
+                                            dateText = Utils.formatDate(parsed)
+                                        } else {
+                                            dateText = Utils.formatDate(voucherDate)
+                                        }
+                                        isDateEditing = false
+                                        focusManager.clearFocus()
+                                    }
+                                ),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .focusRequester(dateFocusRequester)
+                                    .onFocusChanged { focusState ->
+                                        if (!focusState.isFocused && !isDateEditing) {
+                                            val parsed = parseShorthandDate(dateText)
+                                            if (parsed != null) {
+                                                voucherDate = parsed
+                                                dateText = Utils.formatDate(parsed)
+                                            } else {
+                                                dateText = Utils.formatDate(voucherDate)
+                                            }
+                                        }
+                                    }
+                            )
+                        } else {
+                            OutlinedTextField(
+                                value = dateText,
+                                onValueChange = {},
+                                readOnly = true,
+                                label = {
+                                    Text(
+                                        text = "Date",
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = AppColors.labelText
+                                    )
+                                },
+                                textStyle = TextStyle(color = AppColors.inputText, fontSize = 14.sp),
+                                trailingIcon = {
+                                    Icon(
+                                        Icons.Default.DateRange,
+                                        contentDescription = "Pick date",
+                                        modifier = Modifier.clickable {
+                                            showDatePicker(voucherDate.toString()) { newDate ->
+                                                voucherDate = newDate
+                                                dateText = Utils.formatDate(newDate)
+                                            }
+                                        }
+                                    )
+                                },
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clickable { isDateEditing = true },
+                                shape = RoundedCornerShape(12.dp),
+                                colors = zeroBookInputColors()
+                            )
+                        }
+                    }
                     RetailTextField(
                         value = narration,
                         onValueChange = { narration = it },
@@ -2720,22 +2845,147 @@ fun NewVoucherScreen(
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                     if (showDetailsStep) {
+                    Text(
+                        text = "Voucher identity",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = AppColors.textTertiary,
+                        letterSpacing = 0.8.sp
+                    )
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         RetailTextField(
                             value = voucherNo,
-                            onValueChange = {},
+                            onValueChange = {
+                                voucherNoTouched = true
+                                voucherNo = it
+                            },
                             label = "Voucher Number",
-                            readOnly = true,
+                            placeholder = "e.g. INV-00143",
+                            readOnly = false,
                             modifier = Modifier.weight(1f)
                         )
 
-                        RetailTextField(
-                            value = Utils.formatDate(voucherDate),
-                            onValueChange = {},
-                            label = "Date",
-                            readOnly = true,
-                            modifier = Modifier.weight(1f)
-                        )
+                        if (isDateEditing) {
+                            val dateFocusRequester2 = remember { FocusRequester() }
+                            val focusManager2 = LocalFocusManager.current
+                            LaunchedEffect(Unit) {
+                                dateFocusRequester2.requestFocus()
+                            }
+                            RetailTextField(
+                                value = dateText,
+                                onValueChange = { newText ->
+                                    dateText = newText
+                                    val parsed = parseShorthandDate(newText)
+                                    if (parsed != null) {
+                                        voucherDate = parsed
+                                        if (!isEditMode && !voucherNoTouched) {
+                                            coroutineScope.launch {
+                                                val nextNo = viewModel.generateNextVoucherNo(selectedType, parsed)
+                                                voucherNo = nextNo
+                                            }
+                                        }
+                                    }
+                                },
+                                label = "Date",
+                                placeholder = "dd/MM/yyyy",
+                                readOnly = false,
+                                trailingIcon = {
+                                    Icon(
+                                        Icons.Default.DateRange,
+                                        contentDescription = "Pick date",
+                                        modifier = Modifier.clickable {
+                                            showDatePicker(voucherDate.toString()) { newDate ->
+                                                voucherDate = newDate
+                                                dateText = Utils.formatDate(newDate)
+                                                if (!isEditMode && !voucherNoTouched) {
+                                                    coroutineScope.launch {
+                                                        val nextNo = viewModel.generateNextVoucherNo(selectedType, newDate)
+                                                        voucherNo = nextNo
+                                                    }
+                                                }
+                                                isDateEditing = false
+                                                focusManager2.clearFocus()
+                                            }
+                                        }
+                                    )
+                                },
+                                keyboardOptions = KeyboardOptions(
+                                    keyboardType = KeyboardType.Phone,
+                                    imeAction = ImeAction.Done
+                                ),
+                                keyboardActions = KeyboardActions(
+                                    onDone = {
+                                        val parsed = parseShorthandDate(dateText)
+                                        if (parsed != null) {
+                                            voucherDate = parsed
+                                            dateText = Utils.formatDate(parsed)
+                                            if (!isEditMode && !voucherNoTouched) {
+                                                coroutineScope.launch {
+                                                    val nextNo = viewModel.generateNextVoucherNo(selectedType, parsed)
+                                                    voucherNo = nextNo
+                                                }
+                                            }
+                                        } else {
+                                            dateText = Utils.formatDate(voucherDate)
+                                        }
+                                        isDateEditing = false
+                                        focusManager2.clearFocus()
+                                    }
+                                ),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .focusRequester(dateFocusRequester2)
+                                    .onFocusChanged { focusState ->
+                                        if (!focusState.isFocused && !isDateEditing) {
+                                            val parsed = parseShorthandDate(dateText)
+                                            if (parsed != null) {
+                                                voucherDate = parsed
+                                                dateText = Utils.formatDate(parsed)
+                                            } else {
+                                                dateText = Utils.formatDate(voucherDate)
+                                            }
+                                        }
+                                    }
+                            )
+                        } else {
+                            OutlinedTextField(
+                                value = dateText,
+                                onValueChange = {},
+                                readOnly = true,
+                                label = {
+                                    Text(
+                                        text = "Date",
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = AppColors.labelText
+                                    )
+                                },
+                                textStyle = TextStyle(color = AppColors.inputText, fontSize = 14.sp),
+                                trailingIcon = {
+                                    Icon(
+                                        Icons.Default.DateRange,
+                                        contentDescription = "Pick date",
+                                        modifier = Modifier.clickable {
+                                            showDatePicker(voucherDate.toString()) { newDate ->
+                                                voucherDate = newDate
+                                                dateText = Utils.formatDate(newDate)
+                                                if (!isEditMode && !voucherNoTouched) {
+                                                    coroutineScope.launch {
+                                                        val nextNo = viewModel.generateNextVoucherNo(selectedType, newDate)
+                                                        voucherNo = nextNo
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    )
+                                },
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clickable { isDateEditing = true },
+                                shape = RoundedCornerShape(12.dp),
+                                colors = zeroBookInputColors()
+                            )
+                        }
                     }
 
                     if (selectedType == "SALE_RETURN" || selectedType == "PURCHASE_RETURN") {
@@ -4071,7 +4321,7 @@ fun NewVoucherScreen(
                         LiveInvoicePreview(
                             profile = profile,
                             party = selectedParty,
-                            voucherNo = voucherNo,
+                            voucherNo = voucherNo.trim(),
                             voucherDate = voucherDate,
                             paymentMode = paymentMode,
                             creditDueDate = creditDueDateText,
@@ -4194,7 +4444,7 @@ fun NewVoucherScreen(
                         LiveInvoicePreview(
                             profile = profile,
                             party = selectedParty,
-                            voucherNo = voucherNo,
+                            voucherNo = voucherNo.trim(),
                             voucherDate = voucherDate,
                             paymentMode = paymentMode,
                             creditDueDate = creditDueDateText,
@@ -5293,7 +5543,7 @@ fun LiveInvoicePreview(
     ) {
         Voucher(
             id = "preview-$voucherNo",
-            voucherNo = voucherNo,
+            voucherNo = voucherNo.trim(),
             type = selectedType,
             date = voucherDate,
             partyId = party?.id,

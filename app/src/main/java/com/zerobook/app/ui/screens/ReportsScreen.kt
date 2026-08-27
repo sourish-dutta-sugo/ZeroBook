@@ -1,5 +1,6 @@
 package com.zerobook.app.ui.screens
 
+import android.app.DatePickerDialog
 import android.content.Context
 import android.widget.Toast
 import androidx.compose.animation.*
@@ -43,6 +44,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import kotlinx.coroutines.launch
 import com.zerobook.app.ui.animation.pressScale
 import com.zerobook.app.ui.animation.premiumClickable
+import java.util.Calendar
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -1880,9 +1882,8 @@ fun AgedBillsListView(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            val sdf = remember { java.text.SimpleDateFormat("dd MMM yyyy", java.util.Locale.getDefault()) }
-                            val dateStr = sdf.format(java.util.Date(bill.billDate))
-                            val dueDateStr = if (bill.dueDate != null) sdf.format(java.util.Date(bill.dueDate)) else "N/A"
+                            val dateStr = com.zerobook.app.data.Utils.formatDate(bill.billDate)
+                            val dueDateStr = if (bill.dueDate != null) com.zerobook.app.data.Utils.formatDate(bill.dueDate!!) else "N/A"
                             
                             Column {
                                 Text("Bill Date: $dateStr", fontSize = 11.sp, color = AppColors.textTertiary)
@@ -2007,22 +2008,57 @@ fun AgedBillsListView(
                     Text("Receipt Date", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = AppColors.textSecondary)
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         val sdf = remember { java.text.SimpleDateFormat("dd/MM/yyyy", java.util.Locale.getDefault()) }
-                        Text(sdf.format(java.util.Date(receiptDate)), fontSize = 14.sp, fontWeight = FontWeight.Medium)
-                        
-                        OutlinedButton(
-                            onClick = {
-                                receiptDate += 24L * 3600L * 1000L
+                        val receiptContext = LocalContext.current
+                        OutlinedTextField(
+                            value = sdf.format(java.util.Date(receiptDate)),
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text("Date", fontSize = 12.sp) },
+                            trailingIcon = {
+                                Icon(
+                                    Icons.Default.DateRange,
+                                    contentDescription = "Pick date",
+                                    modifier = Modifier.clickable {
+                                        val cal = Calendar.getInstance().apply { timeInMillis = receiptDate }
+                                        DatePickerDialog(
+                                            receiptContext,
+                                            { _, year, month, day ->
+                                                val picked = Calendar.getInstance().apply {
+                                                    set(year, month, day, 0, 0, 0)
+                                                    set(Calendar.MILLISECOND, 0)
+                                                }
+                                                receiptDate = picked.timeInMillis
+                                            },
+                                            cal.get(Calendar.YEAR),
+                                            cal.get(Calendar.MONTH),
+                                            cal.get(Calendar.DAY_OF_MONTH)
+                                        ).show()
+                                    }
+                                )
                             },
-                            shape = RoundedCornerShape(4.dp),
-                            contentPadding = PaddingValues(horizontal = 8.dp),
-                            modifier = Modifier.pressScale()
-                        ) {
-                            Text("+1 Day", fontSize = 11.sp)
-                        }
+                            modifier = Modifier
+                                .weight(1f)
+                                .clickable {
+                                    val cal = Calendar.getInstance().apply { timeInMillis = receiptDate }
+                                    DatePickerDialog(
+                                        receiptContext,
+                                        { _, year, month, day ->
+                                            val picked = Calendar.getInstance().apply {
+                                                set(year, month, day, 0, 0, 0)
+                                                set(Calendar.MILLISECOND, 0)
+                                            }
+                                            receiptDate = picked.timeInMillis
+                                        },
+                                        cal.get(Calendar.YEAR),
+                                        cal.get(Calendar.MONTH),
+                                        cal.get(Calendar.DAY_OF_MONTH)
+                                    ).show()
+                                }
+                        )
                     }
                 }
             },

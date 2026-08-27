@@ -194,7 +194,11 @@ fun InvoiceScreen(
             TopAppBar(
                 title = {
                     Column {
-                        Text("Invoice Viewer", fontWeight = FontWeight.Bold, color = Color(0xFF0D0D0D))
+                        Text(
+                            renderBundle?.document?.displayTitle ?: "Document Viewer",
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF0D0D0D)
+                        )
                         Text(
                             renderBundle?.document?.invoiceNumber ?: "",
                             fontSize = 11.sp,

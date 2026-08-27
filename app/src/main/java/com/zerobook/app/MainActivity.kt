@@ -36,7 +36,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Assignment
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.GridView
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Button
@@ -91,13 +91,13 @@ import com.zerobook.app.data.ChangelogData
 import com.zerobook.app.data.ChangelogLoader
 import com.zerobook.app.ui.AppViewModel
 import com.zerobook.app.ui.DashboardViewModel
-import com.zerobook.app.ui.animation.PremiumBottomNavContent
-import com.zerobook.app.ui.animation.premiumClickable
-import com.zerobook.app.ui.animation.premiumDialogEnter
-import com.zerobook.app.ui.animation.pressScale
-import com.zerobook.app.ui.animation.premiumDialogExit
-import com.zerobook.app.ui.animation.premiumEnterTransition
-import com.zerobook.app.ui.animation.premiumExitTransition
+import com.zerobook.app.ui.transitions.NavBarContent
+import com.zerobook.app.ui.transitions.clickableScale
+import com.zerobook.app.ui.transitions.dialogEnter
+import com.zerobook.app.ui.transitions.pressScale
+import com.zerobook.app.ui.transitions.dialogExit
+import com.zerobook.app.ui.transitions.enterTransition
+import com.zerobook.app.ui.transitions.exitTransition
 import com.zerobook.app.ui.screens.BankCashScreen
 import com.zerobook.app.ui.screens.DashboardScreen
 import com.zerobook.app.ui.screens.ExpensesScreen
@@ -107,7 +107,7 @@ import com.zerobook.app.ui.screens.NewVoucherScreen
 import com.zerobook.app.ui.screens.PartiesScreen
 import com.zerobook.app.ui.screens.PartyDetailScreen
 import com.zerobook.app.ui.screens.ProductsScreen
-import com.zerobook.app.ui.screens.QuickSaleScreen
+import com.zerobook.app.feature.billing.BillingScreen
 import com.zerobook.app.ui.screens.ReportsScreen
 import com.zerobook.app.ui.screens.SettingsScreen
 import com.zerobook.app.ui.screens.SetupScreen
@@ -128,7 +128,7 @@ private object Routes {
     const val Reports = "reports"
     const val LedgerBooks = "ledger_books"
     const val Expenses = "expenses"
-    const val QuickSale = "quick_sale"
+    const val CounterSale = "counter_sale"
     const val Products = "products"
     const val BankCash = "bank_cash"
     const val NewVoucher = "new_voucher?voucherId={voucherId}"
@@ -145,7 +145,7 @@ private data class TopLevelDestination(
 )
 
 private val topLevelDestinations = listOf(
-    TopLevelDestination(Routes.Dashboard, "Dashboard", Icons.Default.GridView),
+    TopLevelDestination(Routes.Dashboard, "Home", Icons.Default.Home),
     TopLevelDestination(Routes.Vouchers, "Vouchers", Icons.AutoMirrored.Filled.Assignment),
     TopLevelDestination(Routes.Parties, "Parties", Icons.Default.Group),
     TopLevelDestination(Routes.Settings, "Settings", Icons.Default.Settings)
@@ -378,13 +378,13 @@ private fun AppContent(
                             if (isTopLevel) {
                                 Box {
                                     NavigationBar(
-                                        containerColor = Color.White,
+containerColor = AppColors.bottomBarBg,
                                         tonalElevation = 0.dp,
                                         modifier = Modifier
                                             .navigationBarsPadding()
                                             .height(64.dp)
                                             .background(
-                                                Color.White,
+                                                AppColors.bottomBarBg,
                                                 RoundedCornerShape(topStart = 0.dp, topEnd = 0.dp)
                                             )
                                     ) {
@@ -484,8 +484,8 @@ private fun AppContent(
                         val configuration = LocalConfiguration.current
                         androidx.compose.animation.AnimatedVisibility(
                             visible = showChangelog,
-                            enter = premiumDialogEnter(),
-                            exit = premiumDialogExit()
+                            enter = dialogEnter(),
+                            exit = dialogExit()
                         ) {
                             androidx.compose.material3.AlertDialog(
                                 onDismissRequest = {},
@@ -545,10 +545,10 @@ private fun ZeroBookNavHost(
     NavHost(
         navController = navController,
         startDestination = Routes.Dashboard,
-        enterTransition = premiumEnterTransition(navigatingBack = false),
-        exitTransition = premiumExitTransition(navigatingBack = false),
-        popEnterTransition = premiumEnterTransition(navigatingBack = true),
-        popExitTransition = premiumExitTransition(navigatingBack = true)
+        enterTransition = enterTransition(navigatingBack = false),
+        exitTransition = exitTransition(navigatingBack = false),
+        popEnterTransition = enterTransition(navigatingBack = true),
+        popExitTransition = exitTransition(navigatingBack = true)
     ) {
         composable(Routes.Dashboard) {
             DashboardScreen(
@@ -560,7 +560,7 @@ private fun ZeroBookNavHost(
                         "SALE", "PURCHASE" -> navController.navigate(newVoucherRoute())
                         "RECEIPT", "PAYMENT" -> navController.navigate(Routes.BankCash)
                         "REPORTS" -> navController.navigate(Routes.Reports)
-                        "QUICK_SALE" -> navController.navigate(Routes.QuickSale)
+                        "QUICK_SALE" -> navController.navigate(Routes.CounterSale)
                         "EXPENSES" -> navController.navigate(Routes.Expenses)
                         "PARTY" -> navController.navigateToTopLevel(Routes.Parties)
                         "VOUCHERS" -> navController.navigateToTopLevel(Routes.Vouchers)
@@ -629,8 +629,8 @@ private fun ZeroBookNavHost(
             )
         }
 
-        composable(Routes.QuickSale) {
-            QuickSaleScreen(
+        composable(Routes.CounterSale) {
+            BillingScreen(
                 viewModel = viewModel,
                 onNavigateBack = { navController.popBackStack() }
             )
@@ -793,7 +793,7 @@ fun PinLockScreen(
                                     if (isAction) Color(0x0AFFFFFF) else Color(0x1AFFFFFF),
                                     RoundedCornerShape(50)
                                 )
-                                .premiumClickable {
+                                .clickableScale {
                                     hasError = false
                                     when (key) {
                                         "CLR" -> enteredText = ""

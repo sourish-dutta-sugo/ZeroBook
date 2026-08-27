@@ -541,6 +541,8 @@ class AppRepository(private val db: AppDatabase) {
             "REJECTION_NOTE" -> "REJ"
             "PETTY_CASH" -> "PCV"
             "PROFORMA" -> "PFI"
+            "INCOME" -> "INC"
+            "EXPENSE" -> "EXP"
             else -> "VCH"
         }
         val pattern = "$prefix/$fy/%"
